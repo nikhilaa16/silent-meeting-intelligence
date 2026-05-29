@@ -16,6 +16,8 @@ from fpdf import FPDF
 # Load configurations
 load_dotenv()
 API_URL = os.getenv("BACKEND_URL", "http://localhost:8001")
+if API_URL and not API_URL.startswith(("http://", "https://")):
+    API_URL = f"http://{API_URL}"
 API_KEY = os.getenv("API_KEY", "silent-meeting-super-secret-2025")
 AUTH_HEADERS = {"X-API-Key": API_KEY}
 POLL_INTERVAL_SECONDS = 3
