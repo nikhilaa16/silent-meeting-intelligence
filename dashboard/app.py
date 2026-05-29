@@ -34,9 +34,9 @@ class MeetingReportPDF(FPDF):
     def header(self):
         # Draw header banner or logo area
         self.set_font('Helvetica', 'B', 14)
-        self.set_text_color(190, 18, 60) # Deep wine red theme
+        self.set_text_color(236, 72, 153) # Vibrant pink theme
         self.cell(0, 10, 'Silent Meeting Intelligence — Meeting Report', border=0, ln=1, align='L')
-        self.set_draw_color(190, 18, 60)
+        self.set_draw_color(236, 72, 153)
         self.set_line_width(0.5)
         self.line(10, 20, 200, 20)
         self.ln(10)
@@ -65,7 +65,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Executive Summary ─────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(190, 18, 60)
+    pdf.set_text_color(236, 72, 153)
     pdf.cell(0, 8, "Executive Summary", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85) # Slate 700
@@ -74,7 +74,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Key Decisions ─────────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(190, 18, 60)
+    pdf.set_text_color(236, 72, 153)
     pdf.cell(0, 8, "Key Decisions", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85)
@@ -87,7 +87,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Action Items ──────────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(190, 18, 60)
+    pdf.set_text_color(236, 72, 153)
     pdf.cell(0, 8, "Action Items", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85)
@@ -104,7 +104,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Follow-up Email Draft ──────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(190, 18, 60)
+    pdf.set_text_color(236, 72, 153)
     pdf.cell(0, 8, "Follow-up Email Draft", ln=1)
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(71, 85, 105)
@@ -134,15 +134,15 @@ st.markdown("""
         font-family: 'Outfit', sans-serif;
     }
 
-    /* Premium wine dark background */
+    /* Deep navy gradient background */
     .stApp {
-        background: linear-gradient(135deg, #100208 0%, #200410 50%, #100208 100%);
+        background: linear-gradient(135deg, #0B1220 0%, #111827 100%);
     }
 
     /* Sidebar container styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #120309 0%, #0a0105 100%) !important;
-        border-right: 1px solid rgba(244, 63, 94, 0.15) !important;
+        background: linear-gradient(180deg, #0B1220 0%, #111827 100%) !important;
+        border-right: 1px solid rgba(236, 72, 153, 0.15) !important;
     }
 
     /* Sidebar typography colors */
@@ -155,7 +155,7 @@ st.markdown("""
     section[data-testid="stSidebar"] p,
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] .stMarkdown {
-        color: #f1f5f9 !important;
+        color: #F8FAFC !important;
     }
 
     /* Glassmorphic alerts in sidebar (Backend connected) */
@@ -171,31 +171,31 @@ st.markdown("""
 
     /* Sidebar buttons (Meeting history items & Refresh button) */
     section[data-testid="stSidebar"] button {
-        background-color: rgba(244, 63, 94, 0.05) !important;
-        border: 1px solid rgba(244, 63, 94, 0.15) !important;
-        color: #fda4af !important;
+        background-color: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(236, 72, 153, 0.2) !important;
+        color: #F8FAFC !important;
         border-radius: 8px !important;
         font-family: 'Outfit', sans-serif !important;
         transition: background-color 0.2s, border-color 0.2s, transform 0.1s !important;
     }
 
     section[data-testid="stSidebar"] button:hover {
-        background-color: rgba(244, 63, 94, 0.15) !important;
-        border-color: rgba(244, 63, 94, 0.35) !important;
-        color: #fecdd3 !important;
+        background-color: rgba(236, 72, 153, 0.15) !important;
+        border-color: rgba(236, 72, 153, 0.5) !important;
+        color: #F8FAFC !important;
         transform: scale(1.02);
     }
 
     /* Sidebar dividers */
     section[data-testid="stSidebar"] hr {
-        border-color: rgba(244, 63, 94, 0.15) !important;
+        border-color: rgba(236, 72, 153, 0.15) !important;
     }
 
-    /* Main title with wine-to-rose gold gradient */
+    /* Main title with navy-to-pink gradient */
     .main-title {
         font-size: 2.5rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #fda4af, #f43f5e, #be123c, #881337);
+        background: linear-gradient(135deg, #F8FAFC, #F472B6, #EC4899);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -203,23 +203,24 @@ st.markdown("""
     }
 
     .subtitle {
-        color: #94a3b8;
+        color: #94A3B8;
         font-size: 1.05rem;
         margin-bottom: 2rem;
     }
 
-    /* Cards with transparent wine borders */
+    /* Cards with transparent borders & glassmorphism */
     .intel-card {
-        background: rgba(30, 8, 16, 0.25);
-        border: 1px solid rgba(244, 63, 94, 0.12);
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         margin-bottom: 0.8rem;
+        backdrop-filter: blur(12px);
         transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .intel-card:hover {
-        border-color: rgba(244, 63, 94, 0.4);
+        border-color: rgba(236, 72, 153, 0.4);
         transform: translateY(-2px);
     }
 
@@ -230,22 +231,23 @@ st.markdown("""
         border-radius: 0 12px 12px 0;
         padding: 0.9rem 1.2rem;
         margin-bottom: 0.6rem;
-        color: #e2e8f0;
+        color: #F8FAFC;
         font-size: 0.95rem;
         line-height: 1.6;
     }
 
     /* Action item card */
     .action-card {
-        background: rgba(244, 63, 94, 0.06);
-        border: 1px solid rgba(244, 63, 94, 0.18);
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(236, 72, 153, 0.2);
         border-radius: 12px;
         padding: 1rem 1.2rem;
         margin-bottom: 0.7rem;
+        backdrop-filter: blur(12px);
     }
 
     .action-task {
-        color: #e2e8f0;
+        color: #F8FAFC;
         font-weight: 500;
         font-size: 0.95rem;
         margin-bottom: 0.5rem;
@@ -264,7 +266,7 @@ st.markdown("""
         border-radius: 0 12px 12px 0;
         padding: 0.9rem 1.2rem;
         margin-bottom: 0.6rem;
-        color: #e2e8f0;
+        color: #F8FAFC;
         font-size: 0.95rem;
         line-height: 1.6;
     }
@@ -279,21 +281,22 @@ st.markdown("""
         letter-spacing: 0.02em;
     }
 
-    .badge-high   { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-    .badge-medium { background: rgba(251,191,36,0.2);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
-    .badge-low    { background: rgba(52,211,153,0.2);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-    .badge-owner  { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.25); }
-    .badge-due    { background: rgba(251, 113, 133, 0.15); color: #fecdd3; border: 1px solid rgba(251, 113, 133, 0.25); }
+    .badge-high   { background: rgba(239, 68, 68, 0.2);  color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-medium { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+    .badge-low    { background: rgba(52, 211, 153, 0.2);  color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge-owner  { background: rgba(236, 72, 153, 0.15); color: #FBCFE8; border: 1px solid rgba(236, 72, 153, 0.25); }
+    .badge-due    { background: rgba(148, 163, 184, 0.15); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.25); }
 
     /* Summary box */
     .summary-box {
-        background: rgba(30, 8, 16, 0.2);
-        border: 1px solid rgba(244, 63, 94, 0.2);
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(236, 72, 153, 0.2);
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
-        color: #cbd5e1;
+        color: #94A3B8;
         font-size: 1rem;
         line-height: 1.8;
+        backdrop-filter: blur(12px);
     }
 
     /* Stat counters */
@@ -305,22 +308,23 @@ st.markdown("""
 
     .stat-box {
         flex: 1;
-        background: rgba(30, 8, 16, 0.25);
-        border: 1px solid rgba(244, 63, 94, 0.12);
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 12px;
         padding: 1rem;
         text-align: center;
+        backdrop-filter: blur(12px);
     }
 
     .stat-number {
         font-size: 2rem;
         font-weight: 700;
-        color: #f43f5e;
+        color: #EC4899;
     }
 
     .stat-label {
         font-size: 0.8rem;
-        color: #64748b;
+        color: #94A3B8;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-top: 0.2rem;
@@ -328,8 +332,8 @@ st.markdown("""
 
     /* History item */
     .history-item {
-        background: rgba(30, 8, 16, 0.15);
-        border: 1px solid rgba(244, 63, 94, 0.08);
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         border-radius: 10px;
         padding: 0.7rem 0.9rem;
         margin-bottom: 0.5rem;
@@ -338,7 +342,7 @@ st.markdown("""
     }
 
     .history-item:hover {
-        border-color: rgba(244, 63, 94, 0.35);
+        border-color: rgba(236, 72, 153, 0.35);
         transform: scale(1.02);
     }
 
@@ -353,7 +357,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.08);
         border-radius: 12px;
         padding: 1.2rem;
-        color: #94a3b8;
+        color: #94A3B8;
         font-size: 0.88rem;
         line-height: 1.7;
         max-height: 300px;
@@ -371,21 +375,21 @@ st.markdown("""
 
     .stTabs [data-baseweb="tab"] {
         background: transparent;
-        color: #64748b;
+        color: #94A3B8;
         border-radius: 8px 8px 0 0;
         padding: 0.5rem 1.2rem;
         font-size: 0.9rem;
     }
 
     .stTabs [aria-selected="true"] {
-        background: rgba(244, 63, 94, 0.12);
-        color: #f43f5e;
-        border-bottom: 2px solid #f43f5e;
+        background: rgba(236, 72, 153, 0.12);
+        color: #EC4899;
+        border-bottom: 2px solid #EC4899;
     }
 
     /* Upload area */
     .upload-hint {
-        color: #475569;
+        color: #94A3B8;
         font-size: 0.85rem;
         text-align: center;
         margin-top: 0.5rem;
@@ -395,7 +399,7 @@ st.markdown("""
     .empty-state {
         text-align: center;
         padding: 3rem 1rem;
-        color: #475569;
+        color: #94A3B8;
     }
     .empty-icon { font-size: 3rem; margin-bottom: 0.8rem; }
     .empty-text { font-size: 0.95rem; }
@@ -548,7 +552,7 @@ if meeting_id:
                     st.markdown("""
                         <div style="text-align:center; padding: 3rem 0;">
                             <div style="font-size:3rem; margin-bottom:1rem;">⚙️</div>
-                            <div style="color:#f43f5e; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
+                            <div style="color:#EC4899; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
                                 Processing your meeting...
                             </div>
                             <div style="color:#64748b; font-size:0.9rem;">
@@ -597,7 +601,7 @@ if meeting_id:
             )
 
         # Stats row — show conflicts count in red if any found
-        conflict_color = "#f87171" if conflicts else "#f43f5e"
+        conflict_color = "#f87171" if conflicts else "#EC4899"
         st.markdown(f"""
         <div class="stat-row">
             <div class="stat-box">
