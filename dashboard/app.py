@@ -1166,7 +1166,6 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # User Profile card
     st.markdown("""
     <div class="profile-card">
         <div class="avatar">👤</div>
@@ -1176,6 +1175,11 @@ with st.sidebar:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    with st.expander("⚙️ System Diagnostics"):
+        st.write(f"**API URL**: `{API_URL}`")
+        st.write(f"**API Key**: `{'Loaded' if API_KEY else 'Missing'}`")
+
 
 # Fetch meetings & tasks (cached – fast on every rerun)
 meetings  = fetch_meetings()
