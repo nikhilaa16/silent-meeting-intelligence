@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_LLM_MODEL=${GROQ_LLM_MODEL}
+      - GROQ_WHISPER_MODEL=${GROQ_WHISPER_MODEL}
+      - API_KEY=${API_KEY}
+      - DB_PATH=/app/data/meetings.db
+      - UPLOAD_DIR=/app/data/uploads
+    volumes:
+      - app-data:/app/data
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard.Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - API_KEY=${API_KEY}
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  app-data:
