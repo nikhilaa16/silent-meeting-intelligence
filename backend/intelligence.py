@@ -87,12 +87,13 @@ def _detect_speakers(transcript: str) -> tuple[bool, list[str]]:
 # ─────────────────────────────────────────────
 
 def _get_llm() -> ChatGroq:
-    """Return a configured Groq LLM instance."""
+    """Return a configured Groq LLM instance with retries on rate limits."""
     return ChatGroq(
         api_key=settings.GROQ_API_KEY,
         model=settings.GROQ_LLM_MODEL,
         temperature=0,          # Deterministic — we want consistent extractions
         max_tokens=2048,
+        max_retries=10,         # Automatically retries on 429 rate limits / concurrency limits
     )
 
 
