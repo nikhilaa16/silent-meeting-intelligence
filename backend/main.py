@@ -220,6 +220,25 @@ def search_meetings(
     return semantic_search_meetings(query, meetings_data)
 
 
+@app.get("/meetings/tasks")
+def list_all_tasks(
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """Aggregate and list all action items across all completed meetings."""
+    completed = db.query(MeetingDB).filter(MeetingDB.status == "completed").all()
+    all_tasks = []
+    for m in completed:
+        if m.action_items:
+            for idx, item in enumerate(m.action_items):
+                task_dict = dict(item)
+                task_dict["meeting_id"] = m.id
+                task_dict["meeting_filename"] = m.filename
+                task_dict["task_index"] = idx
+                all_tasks.append(task_dict)
+    return all_tasks
+
+
 @app.get("/meetings/{meeting_id}", response_model=MeetingResult)
 def get_meeting(
     meeting_id: str,
@@ -275,6 +294,58 @@ def list_meetings(
 ):
     """List all meetings ordered by creation date, newest first."""
     return db.query(MeetingDB).order_by(MeetingDB.created_at.desc()).all()
+
+
+@app.post("/meetings/{meeting_id}/tasks/{task_idx}/toggle")
+def toggle_meeting_task(
+    meeting_id: str,
+    task_idx: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """Toggle the completed status of an action item at a specific index."""
+    meeting = db.query(MeetingDB).filter(MeetingDB.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found.")
+
+    action_items = list(meeting.action_items) if meeting.action_items else []
+    if task_idx < 0 or task_idx >= len(action_items):
+        raise HTTPException(status_code=404, detail="Task index out of range.")
+
+    # Mutate a copy to ensure SQLAlchemy registers the change
+    item = dict(action_items[task_idx])
+    item["completed"] = not item.get("completed", False)
+    action_items[task_idx] = item
+
+    meeting.action_items = action_items
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return {"status": "success", "action_items": meeting.action_items}
+
+
+@app.post("/meetings/{meeting_id}/conflicts/{conflict_idx}/resolve")
+def resolve_meeting_conflict(
+    meeting_id: str,
+    conflict_idx: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """Dismiss/resolve a cross-meeting conflict by index."""
+    meeting = db.query(MeetingDB).filter(MeetingDB.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found.")
+
+    conflicts = list(meeting.conflicts) if meeting.conflicts else []
+    if conflict_idx < 0 or conflict_idx >= len(conflicts):
+        raise HTTPException(status_code=404, detail="Conflict index out of range.")
+
+    conflicts.pop(conflict_idx)
+    meeting.conflicts = conflicts
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return {"status": "success", "conflicts": meeting.conflicts}
 
 
 @app.delete("/meetings/{meeting_id}", status_code=204)

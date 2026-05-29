@@ -53,6 +53,7 @@ class ActionItem(BaseModel):
     owner: str = "Unassigned"
     deadline: Optional[str] = None
     priority: str = "medium"  # high | medium | low
+    completed: bool = False
 
 
 class MeetingUploadResponse(BaseModel):

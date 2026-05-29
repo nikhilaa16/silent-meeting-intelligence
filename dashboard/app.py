@@ -643,10 +643,10 @@ if meeting_id:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                for c in conflicts:
+                for idx, c in enumerate(conflicts):
                     st.markdown(f"""
                     <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2);
-                         border-radius:12px; padding:1.1rem 1.3rem; margin-bottom:0.8rem;">
+                         border-radius:12px 12px 0 0; padding:1.1rem 1.3rem; margin-bottom:0rem;">
                         <div style="color:#fca5a5; font-size:0.82rem; text-transform:uppercase;
                              letter-spacing:0.05em; margin-bottom:0.6rem; font-weight:600;">
                             Conflict Detected
@@ -663,6 +663,22 @@ if meeting_id:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+                    if st.button("🔓 Resolve & Dismiss Conflict", key=f"resolve_conflict_{meeting_id}_{idx}", use_container_width=True):
+                        try:
+                            r = requests.post(
+                                f"{API_URL}/meetings/{meeting_id}/conflicts/{idx}/resolve",
+                                headers=AUTH_HEADERS,
+                                timeout=10
+                            )
+                            if r.status_code == 200:
+                                st.success("Conflict resolved!")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(f"Failed to resolve: {r.status_code}")
+                        except Exception as e:
+                            st.error(f"Connection error: {e}")
+                    st.markdown("<div style='margin-bottom:1rem;'></div>", unsafe_allow_html=True)
             else:
                 st.markdown('<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">No conflicts with past meetings.<br>All decisions are consistent.</div></div>', unsafe_allow_html=True)
 
@@ -740,69 +756,227 @@ if meeting_id:
         break  # Exit polling loop — we have results
 
 else:
-    # No meeting selected — show welcome screen and RAG search
-    st.markdown("### 🔍 Search Past Meetings (Semantic RAG)")
-    search_query = st.text_input(
-        "Ask a question about any past meeting:",
-        placeholder="e.g. 'What did we decide about the database?' or 'Who owns the setup tasks?'",
-    )
-    if search_query:
-        with st.spinner("Searching transcripts..."):
-            try:
-                r = requests.get(
-                    f"{API_URL}/meetings/search",
-                    params={"query": search_query},
-                    headers=AUTH_HEADERS,
-                    timeout=20,
-                )
-                if r.status_code == 200:
-                    result = r.json()
-                    answer = result.get("answer", "No answer could be generated.")
-                    sources = result.get("sources") or []
+    # No meeting selected — show welcome screen tabs
+    welcome_tab_search, welcome_tab_tasks, welcome_tab_analytics = st.tabs([
+        "🔍 Search Past Meetings (RAG)",
+        "🎯 Global Task Board",
+        "📊 Workspace Analytics"
+    ])
 
-                    st.markdown("#### 🤖 Answer")
-                    st.info(answer)
+    with welcome_tab_search:
+        st.markdown("### 🔍 Search Past Meetings (Semantic RAG)")
+        search_query = st.text_input(
+            "Ask a question about any past meeting:",
+            placeholder="e.g. 'What did we decide about the database?' or 'Who owns the setup tasks?'",
+        )
+        if search_query:
+            with st.spinner("Searching transcripts..."):
+                try:
+                    r = requests.get(
+                        f"{API_URL}/meetings/search",
+                        params={"query": search_query},
+                        headers=AUTH_HEADERS,
+                        timeout=20,
+                    )
+                    if r.status_code == 200:
+                        result = r.json()
+                        answer = result.get("answer", "No answer could be generated.")
+                        sources = result.get("sources") or []
 
-                    if sources:
-                        with st.expander("📄 Citations & Context"):
-                            for idx, src in enumerate(sources, 1):
-                                st.markdown(f"**Source #{idx} — Meeting: {src['filename']} ({src['date']})**")
-                                st.markdown(f"*{src['snippet']}*")
-                                st.markdown("---")
-                else:
-                    st.error(f"Search failed: {r.status_code} - {r.text}")
-            except Exception as err:
-                st.error(f"Error querying search endpoint: {err}")
+                        st.markdown("#### 🤖 Answer")
+                        st.info(answer)
 
-    st.markdown("---")
-    
-    if not meetings:
-        st.markdown("""
-        <div style="text-align:center; padding: 4rem 2rem;">
-            <div style="font-size:4rem; margin-bottom:1.5rem;">🎙️</div>
-            <h2 style="color:#e2e8f0; font-weight:600; margin-bottom:0.8rem;">
-                Never lose a meeting decision again
-            </h2>
-            <p style="color:#64748b; font-size:1rem; max-width:500px; margin:0 auto 2rem; line-height:1.7;">
-                Upload any meeting recording above. Our 4-agent AI pipeline will extract 
-                every decision, action item, and open question — in under 2 minutes.
-            </p>
-            <div style="display:flex; gap:2rem; justify-content:center; flex-wrap:wrap; margin-top:1.5rem;">
-                <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
-                    <div style="font-size:1.8rem;">✅</div>
-                    <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Decisions</div>
-                    <div style="color:#64748b; font-size:0.82rem;">What was agreed</div>
-                </div>
-                <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
-                    <div style="font-size:1.8rem;">🎯</div>
-                    <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Action Items</div>
-                    <div style="color:#64748b; font-size:0.82rem;">Who does what</div>
-                </div>
-                <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
-                    <div style="font-size:1.8rem;">❓</div>
-                    <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Open Questions</div>
-                    <div style="color:#64748b; font-size:0.82rem;">What's unresolved</div>
+                        if sources:
+                            with st.expander("📄 Citations & Context"):
+                                for idx, src in enumerate(sources, 1):
+                                    st.markdown(f"**Source #{idx} — Meeting: {src['filename']} ({src['date']})**")
+                                    st.markdown(f"*{src['snippet']}*")
+                                    st.markdown("---")
+                    else:
+                        st.error(f"Search failed: {r.status_code} - {r.text}")
+                except Exception as err:
+                    st.error(f"Error querying search endpoint: {err}")
+
+        st.markdown("---")
+        
+        if not meetings:
+            st.markdown("""
+            <div style="text-align:center; padding: 4rem 2rem;">
+                <div style="font-size:4rem; margin-bottom:1.5rem;">🎙️</div>
+                <h2 style="color:#e2e8f0; font-weight:600; margin-bottom:0.8rem;">
+                    Never lose a meeting decision again
+                </h2>
+                <p style="color:#64748b; font-size:1rem; max-width:500px; margin:0 auto 2rem; line-height:1.7;">
+                    Upload any meeting recording above. Our 5-agent AI pipeline will extract 
+                    every decision, action item, and open question — in under 2 minutes.
+                </p>
+                <div style="display:flex; gap:2rem; justify-content:center; flex-wrap:wrap; margin-top:1.5rem;">
+                    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
+                        <div style="font-size:1.8rem;">✅</div>
+                        <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Decisions</div>
+                        <div style="color:#64748b; font-size:0.82rem;">What was agreed</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
+                        <div style="font-size:1.8rem;">🎯</div>
+                        <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Action Items</div>
+                        <div style="color:#64748b; font-size:0.82rem;">Who does what</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.2rem; width:160px;">
+                        <div style="font-size:1.8rem;">❓</div>
+                        <div style="color:#e2e8f0; font-weight:500; margin:0.4rem 0 0.2rem;">Open Questions</div>
+                        <div style="color:#64748b; font-size:0.82rem;">What's unresolved</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+
+    with welcome_tab_tasks:
+        st.markdown("### 🎯 Global Task Board")
+        st.markdown("Track and check off action items across all meetings in real-time.")
+        
+        # Load tasks
+        all_tasks = api_get("/meetings/tasks")
+        if all_tasks is None:
+            st.warning("Could not fetch global tasks. Is the backend offline?")
+        elif not all_tasks:
+            st.markdown('<div class="empty-state"><div class="empty-icon">✨</div><div class="empty-text">No action items found in the system yet.</div></div>', unsafe_allow_html=True)
+        else:
+            # Filters
+            owners = sorted(list(set(t.get("owner", "Unassigned") for t in all_tasks)))
+            priorities_list = ["All", "High", "Medium", "Low"]
+            statuses = ["All", "Pending", "Completed"]
+            
+            f_col1, f_col2, f_col3 = st.columns(3)
+            with f_col1:
+                owner_filter = st.selectbox("Filter by Owner:", ["All"] + owners, key="filter_owner")
+            with f_col2:
+                priority_filter = st.selectbox("Filter by Priority:", priorities_list, key="filter_priority")
+            with f_col3:
+                status_filter = st.selectbox("Filter by Status:", statuses, key="filter_status")
+                
+            # Filter logic
+            filtered_tasks = []
+            for t in all_tasks:
+                match_owner = (owner_filter == "All" or t.get("owner") == owner_filter)
+                match_priority = (priority_filter == "All" or t.get("priority", "medium").lower() == priority_filter.lower())
+                
+                completed = t.get("completed", False)
+                match_status = True
+                if status_filter == "Pending":
+                    match_status = not completed
+                elif status_filter == "Completed":
+                    match_status = completed
+                    
+                if match_owner and match_priority and match_status:
+                    filtered_tasks.append(t)
+                    
+            st.markdown(f"Showing **{len(filtered_tasks)}** of **{len(all_tasks)}** total tasks.")
+            st.markdown("---")
+            
+            for t in filtered_tasks:
+                task_text = t.get("task", "Unknown Task")
+                owner = t.get("owner", "Unassigned")
+                deadline = t.get("deadline") or "No deadline"
+                priority = t.get("priority", "medium")
+                meeting_filename = t.get("meeting_filename", "Meeting")
+                completed = t.get("completed", False)
+                meeting_id_ref = t.get("meeting_id")
+                task_idx_ref = t.get("task_index")
+                
+                col_check, col_details = st.columns([1, 19])
+                with col_check:
+                    new_val = st.checkbox("", value=completed, key=f"chk_global_{meeting_id_ref}_{task_idx_ref}")
+                    if new_val != completed:
+                        try:
+                            r = requests.post(
+                                f"{API_URL}/meetings/{meeting_id_ref}/tasks/{task_idx_ref}/toggle",
+                                headers=AUTH_HEADERS,
+                                timeout=10
+                            )
+                            if r.status_code == 200:
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to update task: {e}")
+                            
+                with col_details:
+                    badge_html = priority_badge(priority)
+                    st.markdown(f"""
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);
+                         border-radius:8px; padding:0.6rem 0.9rem; margin-bottom:0.4rem;">
+                        <div style="color:{'#64748b' if completed else '#e2e8f0'}; text-decoration:{'line-through' if completed else 'none'}; font-weight:500; font-size:0.92rem;">
+                            {task_text}
+                        </div>
+                        <div style="font-size:0.78rem; color:#64748b; margin-top:0.3rem; display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap;">
+                            <span>👤 {owner}</span>
+                            <span>📅 {deadline}</span>
+                            <span style="font-style:italic;">🎙️ {meeting_filename[:25]}</span>
+                            {badge_html}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+    with welcome_tab_analytics:
+        st.markdown("### 📊 Workspace Analytics")
+        st.markdown("High-level insights across all processed meeting records.")
+        
+        all_tasks = api_get("/meetings/tasks") or []
+        completed_meetings = [m for m in meetings if m.get("status") == "completed"]
+        
+        if not completed_meetings:
+            st.info("No completed meetings found. Analytics will appear once a meeting has been processed.")
+        else:
+            total_meetings = len(completed_meetings)
+            total_tasks = len(all_tasks)
+            completed_tasks_count = sum(1 for t in all_tasks if t.get("completed", False))
+            completion_rate = (completed_tasks_count / total_tasks * 100) if total_tasks > 0 else 0.0
+            
+            m_col1, m_col2, m_col3 = st.columns(3)
+            with m_col1:
+                st.metric("Meetings Processed", f"🎙️ {total_meetings}")
+            with m_col2:
+                st.metric("Action Items Extracted", f"🎯 {total_tasks}")
+            with m_col3:
+                st.metric("Task Completion Rate", f"📈 {completion_rate:.1f}%")
+                st.progress(completion_rate / 100.0)
+                
+            st.markdown("---")
+            
+            c_col1, c_col2 = st.columns(2)
+            
+            with c_col1:
+                workloads = {}
+                for t in all_tasks:
+                    o = t.get("owner", "Unassigned")
+                    workloads[o] = workloads.get(o, 0) + 1
+                
+                st.markdown("#### 👤 Task Assignment by Owner")
+                if workloads:
+                    sorted_workloads = dict(sorted(workloads.items(), key=lambda x: x[1], reverse=True))
+                    st.bar_chart(sorted_workloads)
+                else:
+                    st.caption("No workloads to display.")
+                    
+            with c_col2:
+                priorities = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+                for t in all_tasks:
+                    p = t.get("priority", "medium").upper()
+                    priorities[p] = priorities.get(p, 0) + 1
+                    
+                st.markdown("#### 🎯 Priority Distribution")
+                if all_tasks:
+                    st.bar_chart(priorities)
+                else:
+                    st.caption("No priority metrics to display.")
+            
+            st.markdown("---")
+            timeline = {}
+            for m in completed_meetings:
+                created = m.get("created_at")
+                if created:
+                    date_str = created[:10]
+                    timeline[date_str] = timeline.get(date_str, 0) + 1
+            
+            if timeline:
+                st.markdown("#### 📅 Meeting Frequency Timeline")
+                sorted_timeline = dict(sorted(timeline.items()))
+                st.area_chart(sorted_timeline)

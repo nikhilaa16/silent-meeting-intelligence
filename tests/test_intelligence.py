@@ -281,6 +281,54 @@ class TestAPI:
         assert response.status_code == 200
         assert "answer" in response.json()
 
+    def test_list_all_tasks_endpoint(self):
+        """GET /meetings/tasks should aggregate all tasks in the system."""
+        from backend.database import SessionLocal
+        from backend.models import MeetingDB
+        
+        db = SessionLocal()
+        meeting1 = MeetingDB(
+            id="test-meeting-t1",
+            filename="meeting1.mp3",
+            status="completed",
+            action_items=[{"task": "Task 1", "owner": "Alice", "priority": "high", "completed": False}]
+        )
+        meeting2 = MeetingDB(
+            id="test-meeting-t2",
+            filename="meeting2.mp3",
+            status="completed",
+            action_items=[{"task": "Task 2", "owner": "Bob", "priority": "low", "completed": True}]
+        )
+        db.add(meeting1)
+        db.add(meeting2)
+        db.commit()
+        db.close()
+
+        try:
+            response = self.client.get("/meetings/tasks", headers=self.headers)
+            assert response.status_code == 200
+            tasks = response.json()
+            assert len(tasks) >= 2
+            
+            # Find our tasks in the list
+            t1 = next((t for t in tasks if t["meeting_id"] == "test-meeting-t1"), None)
+            t2 = next((t for t in tasks if t["meeting_id"] == "test-meeting-t2"), None)
+            
+            assert t1 is not None
+            assert t1["task"] == "Task 1"
+            assert t1["owner"] == "Alice"
+            assert t1["completed"] is False
+            
+            assert t2 is not None
+            assert t2["task"] == "Task 2"
+            assert t2["owner"] == "Bob"
+            assert t2["completed"] is True
+        finally:
+            db = SessionLocal()
+            db.query(MeetingDB).filter(MeetingDB.id.in_(["test-meeting-t1", "test-meeting-t2"])).delete()
+            db.commit()
+            db.close()
+
     def test_chat_endpoint_requires_auth(self):
         """Chat endpoint must return 422 if API key is missing."""
         response = self.client.post("/meetings/meeting-id/chat", json={"message": "hello"})
@@ -294,6 +342,73 @@ class TestAPI:
             headers=self.headers
         )
         assert response.status_code == 404
+
+    def test_toggle_task_completes_and_toggles(self):
+        """Toggling an action item should modify its 'completed' state in the database."""
+        from backend.database import SessionLocal
+        from backend.models import MeetingDB
+        
+        db = SessionLocal()
+        meeting = MeetingDB(
+            id="test-meeting-toggle",
+            filename="test.mp3",
+            status="completed",
+            action_items=[{"task": "Build feature", "owner": "Nik", "priority": "high", "completed": False}]
+        )
+        db.add(meeting)
+        db.commit()
+        db.close()
+
+        try:
+            # First toggle: False -> True
+            response = self.client.post(
+                "/meetings/test-meeting-toggle/tasks/0/toggle",
+                headers=self.headers
+            )
+            assert response.status_code == 200
+            assert response.json()["action_items"][0]["completed"] is True
+
+            # Second toggle: True -> False
+            response = self.client.post(
+                "/meetings/test-meeting-toggle/tasks/0/toggle",
+                headers=self.headers
+            )
+            assert response.status_code == 200
+            assert response.json()["action_items"][0]["completed"] is False
+        finally:
+            db = SessionLocal()
+            db.query(MeetingDB).filter(MeetingDB.id == "test-meeting-toggle").delete()
+            db.commit()
+            db.close()
+
+    def test_resolve_conflict_removes_from_list(self):
+        """Resolving a conflict should remove it from the conflicts JSON array."""
+        from backend.database import SessionLocal
+        from backend.models import MeetingDB
+        
+        db = SessionLocal()
+        meeting = MeetingDB(
+            id="test-meeting-resolve",
+            filename="test.mp3",
+            status="completed",
+            conflicts=[{"new_decision": "A", "past_decision": "B", "past_meeting": "old.mp3", "explanation": "x"}]
+        )
+        db.add(meeting)
+        db.commit()
+        db.close()
+
+        try:
+            response = self.client.post(
+                "/meetings/test-meeting-resolve/conflicts/0/resolve",
+                headers=self.headers
+            )
+            assert response.status_code == 200
+            assert len(response.json()["conflicts"]) == 0
+        finally:
+            db = SessionLocal()
+            db.query(MeetingDB).filter(MeetingDB.id == "test-meeting-resolve").delete()
+            db.commit()
+            db.close()
 
 
 # ─────────────────────────────────────────────
