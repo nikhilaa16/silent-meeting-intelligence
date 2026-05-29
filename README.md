@@ -2,6 +2,8 @@
 
 > Transform your meeting recordings into structured, actionable intelligence using a production-grade 5-agent AI pipeline. Perfect for team handoffs, client calls, and automated meeting indexing.
 
+![Silent Meeting Intelligence Dashboard](assets/dashboard_mockup.png)
+
 ---
 
 ## 🚀 What It Does
@@ -40,7 +42,7 @@ graph TD
     
     subgraph Advanced Features
         K --> L[Meeting Chatbot Tab]
-        K --> M[Semantic RAG Search Console]
+        K --> M[Lexical RAG Search Console (TF-IDF)]
         K --> N[Cross-Meeting Conflict Detector]
         K --> O[FPDF2 PDF Report Generator]
     end
@@ -120,7 +122,7 @@ streamlit run dashboard/app.py
 #### Q: How does the async backend handle long-running meeting audio without blocking the UI?
 > **Answer**: When a file is uploaded to `POST /meetings/upload`, FastAPI validates the format and instantly spawns a `BackgroundTasks` thread before returning a `202 Accepted` status along with a `meeting_id`. The UI immediately starts polling the backend status using `GET /meetings/{id}` every 3 seconds. The backend does all transcription and agent analysis on the background worker thread, ensuring the main server thread never hangs.
 
-#### Q: How does your Semantic RAG Search retrieve relevant snippets across multiple meetings without a Vector DB?
+#### Q: How does your Lexical RAG Search (TF-IDF) retrieve relevant snippets across multiple meetings without a Vector DB?
 > **Answer**: To avoid the setup overhead of a dedicated Vector Database (like Pinecone/Weaviate) for a portfolio app, I implemented a lightweight, memory-efficient **TF-IDF (Term Frequency-Inverse Document Frequency) keyword ranker** directly in Python. It splits all historical transcripts into paragraph chunks, calculates keyword-matching relevance scores against the user's search query, selects the top 5 most relevant snippets, and feeds them as cited context into LLaMA 3.3 to synthesize a unified answer.
 
 #### Q: Why did you split the AI analysis into 5 separate agents instead of one big prompt?
