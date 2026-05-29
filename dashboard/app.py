@@ -29,7 +29,7 @@ class MeetingReportPDF(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 14)
         self.set_text_color(109, 20, 56) # Wine color (#6D1438)
-        self.cell(0, 10, 'Silent Meeting Intelligence — Enterprise Report', border=0, ln=1, align='L')
+        self.cell(0, 10, 'Silent Meeting Intelligence - Enterprise Report', border=0, ln=1, align='L')
         self.set_draw_color(109, 20, 56)
         self.set_line_width(0.5)
         self.line(10, 20, 200, 20)
@@ -204,29 +204,104 @@ st.markdown("""
         transform: none !important;
     }
 
-    /* Sidebar profile card */
+    /* Sidebar AI System Status card */
+    .sidebar-system-card {
+        background-color: rgba(22, 22, 36, 0.45) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px;
+        padding: 0.75rem;
+        margin-bottom: 0.8rem;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .system-card-title {
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: #94A3B8 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.5rem;
+    }
+
+    .system-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.8rem;
+        margin-bottom: 0.35rem;
+        justify-content: space-between;
+    }
+
+    .system-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 0.4rem;
+    }
+
+    .dot-online {
+        background-color: #22C55E;
+        box-shadow: 0 0 6px #22C55E;
+    }
+
+    .dot-offline {
+        background-color: #EF4444;
+        box-shadow: 0 0 6px #EF4444;
+    }
+
+    .system-name {
+        color: #FFFFFF;
+        font-weight: 500;
+        flex-grow: 1;
+    }
+
+    .system-status-val {
+        font-size: 0.74rem;
+        font-weight: 600;
+    }
+
+    .status-val-online {
+        color: #22C55E;
+    }
+
+    .status-val-offline {
+        color: #EF4444;
+    }
+
+    /* Sidebar profile card with premium glassmorphism & wine accent border */
     .profile-card {
         display: flex;
         align-items: center;
-        gap: 0.8rem;
-        background-color: rgba(22, 22, 36, 0.5) !important; /* Card background #161624 */
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
-        border-radius: 10px;
-        padding: 0.6rem 0.8rem;
+        gap: 0.6rem;
+        background-color: rgba(22, 22, 36, 0.5) !important; /* Premium glassmorphism base */
+        border: 1px solid rgba(109, 20, 56, 0.5) !important; /* Wine accent border (#6D1438) */
+        border-radius: 12px;
+        padding: 0.7rem 0.8rem;
         margin-top: 1rem;
+        backdrop-filter: blur(12px) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .profile-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 24px rgba(109, 20, 56, 0.3) !important; /* Wine glow shadow */
+        border-color: #FF6B9D !important;
     }
 
     .avatar {
-        background: linear-gradient(135deg, #6D1438, #FF6B9D);
-        color: #FFFFFF;
+        background: rgba(109, 20, 56, 0.15);
+        color: #FF6B9D;
         width: 32px;
         height: 32px;
-        border-radius: 50%;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 1rem;
+        font-size: 1.1rem;
+        border: 1px solid rgba(255, 107, 157, 0.2);
     }
 
     .profile-info {
@@ -241,9 +316,18 @@ st.markdown("""
         line-height: 1.2;
     }
 
-    .profile-role {
-        color: #94A3B8 !important; /* Secondary Text */
-        font-size: 0.72rem;
+    /* Role Badge styling */
+    .profile-role-badge {
+        display: inline-block;
+        background-color: rgba(109, 20, 56, 0.18) !important;
+        color: #FF8FAB !important;
+        font-size: 0.68rem !important;
+        font-weight: 600 !important;
+        padding: 0.1rem 0.4rem !important;
+        border-radius: 4px !important;
+        border: 1px solid rgba(109, 20, 56, 0.3) !important;
+        margin-top: 0.2rem !important;
+        align-self: flex-start;
     }
 
     /* Sidebar status block */
@@ -859,39 +943,48 @@ with st.sidebar:
     
     # Check backend connectivity
     health = api_get("/health")
-    if health:
-        st.markdown("""
-        <div class="sidebar-status status-online">
-            <span class="status-indicator"></span>
-            <div>
-                <div style="font-size:0.75rem; color:#94A3B8; font-weight:500;">System Status</div>
-                <div style="font-weight:600; color:#22C55E; font-size:0.85rem; margin-top:0.1rem;">🟢 Operational</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="sidebar-status status-offline">
-            <span class="status-indicator"></span>
-            <div>
-                <div style="font-size:0.75rem; color:#94A3B8; font-weight:500;">System Status</div>
-                <div style="font-weight:600; color:#EF4444; font-size:0.85rem; margin-top:0.1rem;">🔴 Offline</div>
-                <div class="status-hint">Run: python run_backend.py</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    db_status = "Connected" if health else "Offline"
+    db_class = "status-val-online" if health else "status-val-offline"
+    db_dot = "dot-online" if health else "dot-offline"
+    
+    rag_status = "Active" if health else "Inactive"
+    rag_class = "status-val-online" if health else "status-val-offline"
+    rag_dot = "dot-online" if health else "dot-offline"
 
-    # Decorator Graphic
-    if os.path.exists("dashboard/sidebar_landscape.png"):
-        st.image("dashboard/sidebar_landscape.png", use_container_width=True)
+    st.markdown(f"""
+    <div class="sidebar-system-card">
+        <div class="system-card-title">🤖 AI System Status</div>
+        <div class="system-item">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span class="system-dot dot-online"></span>
+                <span class="system-name">🤖 Whisper</span>
+            </div>
+            <span class="system-status-val status-val-online">Online</span>
+        </div>
+        <div class="system-item">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span class="system-dot {rag_dot}"></span>
+                <span class="system-name">🔍 RAG Search</span>
+            </div>
+            <span class="system-status-val {rag_class}">{rag_status}</span>
+        </div>
+        <div class="system-item">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span class="system-dot {db_dot}"></span>
+                <span class="system-name">🗄 Database</span>
+            </div>
+            <span class="system-status-val {db_class}">{db_status}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # User Profile card
     st.markdown("""
     <div class="profile-card">
-        <div class="avatar">N</div>
+        <div class="avatar">👤</div>
         <div class="profile-info">
-            <div class="profile-name">Nikhiii</div>
-            <div class="profile-role">Administrator</div>
+            <div class="profile-name">Nikhila Narina</div>
+            <div class="profile-role-badge">Workspace Administrator</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -908,7 +1001,7 @@ def render_dashboard_page():
     # Welcome Banner
     c_title, c_actions = st.columns([2, 1])
     with c_title:
-        st.markdown('<h4 style="color:#FF8FAB; margin-bottom: 0.2rem; font-weight:600;">Welcome back, Nikhiii! 👋</h4>', unsafe_allow_html=True)
+        st.markdown('<h4 style="color:#FF8FAB; margin-bottom: 0.2rem; font-weight:600;">Welcome back, Nikhila Narina! 👋</h4>', unsafe_allow_html=True)
         st.markdown('<h1 class="main-title">🎙 Silent Meeting Intelligence</h1>', unsafe_allow_html=True)
         st.markdown('<p class="subtitle">Transform conversations into decisions, action items, and business intelligence.</p>', unsafe_allow_html=True)
     with c_actions:
