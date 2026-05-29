@@ -11,7 +11,7 @@ services:
       - key: GROQ_API_KEY
         sync: false # User must provide their own Groq API key in the Render dashboard
       - key: GROQ_LLM_MODEL
-        value: llama-3.3-70b-versatile
+        value: llama-3.1-8b-instant
       - key: GROQ_WHISPER_MODEL
         value: whisper-large-v3-turbo
       - key: API_KEY

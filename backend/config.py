@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ASSEMBLYAI_API_KEY: str = ""
 
     # Model names
-    GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_LLM_MODEL: str = "llama-3.1-8b-instant"
     GROQ_WHISPER_MODEL: str = "whisper-large-v3-turbo"
 
     # Storage
