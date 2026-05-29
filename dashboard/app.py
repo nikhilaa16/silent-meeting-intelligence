@@ -29,7 +29,8 @@ class MeetingReportPDF(FPDF):
     def header(self):
         self.set_font('Helvetica', 'B', 14)
         self.set_text_color(109, 20, 56) # Wine color (#6D1438)
-        self.cell(0, 10, 'Silent Meeting Intelligence - Enterprise Report', border=0, ln=1, align='L')
+        self.cell(0, 10, 'Silent Meeting Intelligence - Enterprise Report', border=0, align='L')
+        self.ln(10)
         self.set_draw_color(109, 20, 56)
         self.set_line_width(0.5)
         self.line(10, 20, 200, 20)
@@ -50,16 +51,19 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     # Title / Metadata
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_text_color(50, 10, 40)
-    pdf.cell(0, 8, f"Meeting Resource: {filename}", ln=1)
+    pdf.cell(0, 8, f"Meeting Resource: {filename}")
+    pdf.ln(8)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(162, 140, 155)
-    pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1)
+    pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    pdf.ln(6)
     pdf.ln(8)
     
     # Summary
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(255, 107, 157) # Accent pink
-    pdf.cell(0, 8, "Executive Summary", ln=1)
+    pdf.cell(0, 8, "Executive Summary")
+    pdf.ln(8)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(50, 10, 40)
     pdf.multi_cell(0, 6, summary or "No summary available.")
@@ -68,20 +72,23 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     # Decisions
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Key Decisions", ln=1)
+    pdf.cell(0, 8, "Key Decisions")
+    pdf.ln(8)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(50, 10, 40)
     if decisions:
         for i, d in enumerate(decisions, 1):
             pdf.multi_cell(0, 6, f"{i}. {d}")
     else:
-        pdf.cell(0, 6, "No decisions were finalized.", ln=1)
+        pdf.cell(0, 6, "No decisions were finalized.")
+        pdf.ln(6)
     pdf.ln(6)
     
     # Action Items
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Action Items", ln=1)
+    pdf.cell(0, 8, "Action Items")
+    pdf.ln(8)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(50, 10, 40)
     if action_items:
@@ -92,19 +99,22 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
             priority = item.get("priority", "medium").upper()
             pdf.multi_cell(0, 6, f"- [{priority}] {task} (Owner: {owner}, Due: {deadline})")
     else:
-        pdf.cell(0, 6, "No action items extracted.", ln=1)
+        pdf.cell(0, 6, "No action items extracted.")
+        pdf.ln(6)
     pdf.ln(6)
     
     # Follow-up Email
     pdf.set_font('Helvetica', 'B', 11)
     pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Follow-up Email Draft", ln=1)
+    pdf.cell(0, 8, "Follow-up Email Draft")
+    pdf.ln(8)
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(109, 20, 56)
     if email_draft:
         pdf.multi_cell(0, 5, email_draft)
     else:
-        pdf.cell(0, 6, "No email draft generated.", ln=1)
+        pdf.cell(0, 6, "No email draft generated.")
+        pdf.ln(6)
         
     return bytes(pdf.output())
 
