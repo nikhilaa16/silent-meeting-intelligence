@@ -89,6 +89,11 @@ class MeetingListItem(BaseModel):
     filename: str
     status: str
     created_at: Optional[datetime] = None
+    decisions: Optional[list] = None
+    action_items: Optional[list] = None
+    open_questions: Optional[list] = None
+    email_draft: Optional[str] = None
+    conflicts: Optional[list] = None
 
     class Config:
         from_attributes = True

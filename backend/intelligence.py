@@ -57,7 +57,29 @@ class MeetingState(TypedDict):
     open_questions: list[str]
     summary: str
     email_draft: str
+    speakers: list[str]   # detected speaker labels e.g. ["Speaker A", "Speaker B"]
+    has_diarization: bool # True when transcript has [Speaker X 00:00:00] format
     error: Optional[str]
+
+
+# ─────────────────────────────────────────────
+# Speaker Diarization Helper
+# ─────────────────────────────────────────────
+
+def _detect_speakers(transcript: str) -> tuple[bool, list[str]]:
+    """
+    Detect whether the transcript has speaker diarization labels.
+    Returns (has_diarization, list_of_unique_speakers).
+
+    Expects format: [Speaker A 00:01:23] text...
+    """
+    import re
+    pattern = r'\[Speaker ([A-Z]) \d{2}:\d{2}\]'
+    matches = re.findall(pattern, transcript)
+    if not matches:
+        return False, []
+    unique = sorted(set(f"Speaker {s}" for s in matches))
+    return True, unique
 
 
 # ─────────────────────────────────────────────
@@ -105,12 +127,21 @@ def _safe_json_parse(text: str, fallback_key: str) -> list:
 def extract_decisions(state: MeetingState) -> MeetingState:
     """
     Identifies all decisions that were finalized in the meeting.
-    A decision is something that was explicitly agreed upon or confirmed.
+    Speaker-aware: uses speaker labels when available to credit decisions.
     """
     llm = _get_llm()
 
-    prompt = f"""You are an expert meeting analyst specializing in decision extraction.
+    speaker_note = ""
+    if state.get("has_diarization") and state.get("speakers"):
+        speaker_list = ", ".join(state["speakers"])
+        speaker_note = f"""
+NOTE: This transcript includes speaker labels in the format [Speaker X HH:MM].
+Speakers detected: {speaker_list}
+When extracting decisions, include the speaker who stated the decision.
+"""
 
+    prompt = f"""You are an expert meeting analyst specializing in decision extraction.
+{speaker_note}
 Analyze the following meeting transcript and extract ALL decisions that were made.
 
 A DECISION is:
@@ -155,12 +186,31 @@ Return ONLY the JSON. No explanation, no markdown."""
 def extract_action_items(state: MeetingState) -> MeetingState:
     """
     Extracts all tasks with owners, deadlines, and priorities.
-    This is the most critical node — the accountability layer.
+    Speaker-aware: uses actual speaker names from diarization as owners.
     """
     llm = _get_llm()
 
-    prompt = f"""You are an expert meeting analyst specializing in action item extraction.
+    speaker_note = ""
+    if state.get("has_diarization") and state.get("speakers"):
+        speaker_list = ", ".join(state["speakers"])
+        speaker_note = f"""
+NOTE: This transcript has speaker diarization labels in [Speaker X HH:MM] format.
+Speakers: {speaker_list}
+IMPORTANT: Use the exact speaker label (e.g. "Speaker A", "Speaker B") as the owner
+when a specific person committed to a task. Use "Unassigned" only when it's truly unclear.
+Also extract the timestamp from the transcript line for each action item.
+"""
 
+    deadline_note = """
+For deadlines: Convert relative expressions to be explicit:
+- "by Friday" → keep as "Friday"
+- "next week" → keep as "next week"
+- "in 3 days" → keep as "in 3 days"
+- Specific dates → keep exact
+"""
+
+    prompt = f"""You are an expert meeting analyst specializing in action item extraction.
+{speaker_note}{deadline_note}
 Analyze the following meeting transcript and extract ALL action items (tasks that someone committed to doing).
 
 An ACTION ITEM is:
@@ -168,31 +218,39 @@ An ACTION ITEM is:
 ✅ Something with a responsible person (or that needs one assigned)
 ✅ Work that needs to happen after the meeting
 
-For each action item, determine:
-- task: The specific thing to be done (clear, actionable sentence)
-- owner: Who is responsible (exact name from transcript, or "Unassigned" if unclear)
-- deadline: When it's due (exact date/time mentioned, or null if not mentioned)
-- priority: "high" (urgent/critical), "medium" (normal), or "low" (nice to have)
+Tricky cases:
+- "Can you handle the API?" → the LISTENER is the owner, not the speaker asking
+- "I'll fix the bug" → the speaker is the owner
+- "Someone needs to update the docs" → Unassigned
+
+For each action item extract:
+- task: Specific actionable sentence
+- owner: Speaker label or name ("Speaker A", "Speaker B", or "Unassigned")
+- deadline: When due, or null
+- priority: "high", "medium", or "low"
+- timestamp: HH:MM from transcript if available, or null
 
 Meeting Transcript:
 \"\"\"
 {state['transcript']}
 \"\"\"
 
-Return ONLY a JSON object in this exact format:
+Return ONLY a JSON object:
 {{
   "action_items": [
     {{
       "task": "Send the updated proposal to the client",
-      "owner": "Sarah",
+      "owner": "Speaker A",
       "deadline": "Friday",
-      "priority": "high"
+      "priority": "high",
+      "timestamp": "00:05"
     }},
     {{
       "task": "Update the database schema documentation",
       "owner": "Unassigned",
       "deadline": null,
-      "priority": "low"
+      "priority": "low",
+      "timestamp": null
     }}
   ]
 }}
@@ -216,22 +274,30 @@ Return ONLY the JSON. No explanation, no markdown."""
 def extract_open_questions(state: MeetingState) -> MeetingState:
     """
     Identifies unresolved questions and issues that need follow-up.
-    These are the ticking time bombs in every meeting.
+    Speaker-aware: notes which speaker raised each question.
     """
     llm = _get_llm()
 
-    prompt = f"""You are an expert meeting analyst specializing in identifying unresolved issues.
+    speaker_note = ""
+    if state.get("has_diarization") and state.get("speakers"):
+        speaker_list = ", ".join(state["speakers"])
+        speaker_note = f"""
+NOTE: This transcript has speaker diarization. Speakers: {speaker_list}
+When extracting open questions, include WHO raised it (e.g. "Speaker A: What is the budget?")
+"""
 
+    prompt = f"""You are an expert meeting analyst specializing in identifying unresolved issues.
+{speaker_note}
 Analyze the following meeting transcript and extract ALL open questions and unresolved issues.
 
 An OPEN QUESTION is:
-✅ A question that was raised but NOT answered in the meeting
-✅ An issue that was discussed but no conclusion was reached
+✅ A question raised but NOT answered in the meeting
+✅ An issue discussed but no conclusion was reached
 ✅ A disagreement that remains unresolved
-✅ Something that needs more information before a decision can be made
+✅ Something needing more information before a decision can be made
 
 NOT an open question:
-❌ Questions that were asked AND answered in the meeting
+❌ Questions asked AND answered in the meeting
 ❌ Rhetorical questions
 ❌ Questions that became action items or decisions
 
@@ -240,10 +306,10 @@ Meeting Transcript:
 {state['transcript']}
 \"\"\"
 
-Return ONLY a JSON object in this exact format:
+Return ONLY a JSON object:
 {{
   "open_questions": [
-    "What is the budget for the new marketing campaign?",
+    "Speaker A: What is the budget for the new marketing campaign?",
     "Who will handle client onboarding after the handoff?"
   ]
 }}
@@ -486,13 +552,23 @@ def analyze_meeting(transcript: str) -> dict:
     """
     Run the full 5-agent intelligence pipeline on a meeting transcript.
 
+    Automatically detects speaker diarization — if the transcript has
+    [Speaker A 00:01:23] labels, all nodes become speaker-aware.
+
     Args:
         transcript: Raw text transcript of the meeting.
 
     Returns:
-        dict with keys: decisions, action_items, open_questions, summary, email_draft, error
+        dict with keys: decisions, action_items, open_questions, summary, email_draft, speakers, error
     """
     graph = build_intelligence_graph()
+
+    # Auto-detect speaker diarization from transcript format
+    has_diarization, speakers = _detect_speakers(transcript)
+    if has_diarization:
+        logger.info(f"Speaker diarization detected: {speakers}")
+    else:
+        logger.info("No speaker diarization — using plain transcript mode")
 
     initial_state: MeetingState = {
         "transcript": transcript,
@@ -501,6 +577,8 @@ def analyze_meeting(transcript: str) -> dict:
         "open_questions": [],
         "summary": "",
         "email_draft": "",
+        "speakers": speakers,
+        "has_diarization": has_diarization,
         "error": None,
     }
 

@@ -7,8 +7,14 @@ from pathlib import Path
 
 
 class Settings(BaseSettings):
-    # Groq API
+    # Groq API (transcription fallback + LLM for all intelligence nodes)
     GROQ_API_KEY: str = ""
+
+    # AssemblyAI API (primary transcription with speaker diarization)
+    # Get a free key at: https://www.assemblyai.com/
+    # Free tier: 5 hours/month — plenty for a FYP demo
+    # Leave blank to fall back to Groq Whisper (no speaker labels)
+    ASSEMBLYAI_API_KEY: str = ""
 
     # Model names
     GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"

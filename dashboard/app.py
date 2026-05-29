@@ -19,7 +19,8 @@ API_URL = os.getenv("BACKEND_URL", "http://localhost:8001")
 API_KEY = os.getenv("API_KEY", "silent-meeting-super-secret-2025")
 AUTH_HEADERS = {"X-API-Key": API_KEY}
 POLL_INTERVAL_SECONDS = 3
-MAX_POLL_ATTEMPTS = 120
+MAX_POLL_ATTEMPTS = 40
+API_TIMEOUT = 3  # seconds – keep UI snappy
 
 # ─────────────────────────────────────────────
 # PDF Exporter Helper (Styled with Luxury Wine theme)
@@ -43,80 +44,126 @@ class MeetingReportPDF(FPDF):
         self.cell(0, 10, f'Page {self.page_no()}', border=0, ln=0, align='C')
 
 
+def _pdf_safe_text(text: str, max_chars: int = 2000) -> str:
+    """Sanitise text for FPDF: strip non-latin1 chars and truncate if too long."""
+    if not text:
+        return ""
+    # Replace characters outside latin-1 range with '?'
+    safe = text.encode('latin-1', errors='replace').decode('latin-1')
+    if len(safe) > max_chars:
+        safe = safe[:max_chars] + "...[truncated]"
+    return safe
+
+
 def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_items: list, email_draft: str) -> bytes:
-    pdf = MeetingReportPDF()
-    pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-    
-    # Title / Metadata
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(50, 10, 40)
-    pdf.cell(0, 8, f"Meeting Resource: {filename}")
-    pdf.ln(8)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(162, 140, 155)
-    pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    pdf.ln(6)
-    pdf.ln(8)
-    
-    # Summary
-    pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(255, 107, 157) # Accent pink
-    pdf.cell(0, 8, "Executive Summary")
-    pdf.ln(8)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(50, 10, 40)
-    pdf.multi_cell(0, 6, summary or "No summary available.")
-    pdf.ln(6)
-    
-    # Decisions
-    pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Key Decisions")
-    pdf.ln(8)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(50, 10, 40)
-    if decisions:
-        for i, d in enumerate(decisions, 1):
-            pdf.multi_cell(0, 6, f"{i}. {d}")
-    else:
-        pdf.cell(0, 6, "No decisions were finalized.")
+    try:
+        pdf = MeetingReportPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+
+        # Compute available width once — used for every multi_cell call
+        aw = pdf.w - pdf.l_margin - pdf.r_margin
+
+        # ── Title / Metadata ────────────────────────────────────────────────
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_text_color(50, 10, 40)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 8, _pdf_safe_text(f"Meeting Resource: {filename}", 200))
+        pdf.ln(8)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(162, 140, 155)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         pdf.ln(6)
-    pdf.ln(6)
-    
-    # Action Items
-    pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Action Items")
-    pdf.ln(8)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(50, 10, 40)
-    if action_items:
-        for item in action_items:
-            task = item.get("task", "Unknown Task")
-            owner = item.get("owner", "Unassigned")
-            deadline = item.get("deadline") or "Not set"
-            priority = item.get("priority", "medium").upper()
-            pdf.multi_cell(0, 6, f"- [{priority}] {task} (Owner: {owner}, Due: {deadline})")
-    else:
-        pdf.cell(0, 6, "No action items extracted.")
+        pdf.ln(8)
+
+        # ── Executive Summary ───────────────────────────────────────────────
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(255, 107, 157)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 8, "Executive Summary")
+        pdf.ln(8)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(50, 10, 40)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(aw, 6, _pdf_safe_text(summary or "No summary available."))
         pdf.ln(6)
-    pdf.ln(6)
-    
-    # Follow-up Email
-    pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(255, 107, 157)
-    pdf.cell(0, 8, "Follow-up Email Draft")
-    pdf.ln(8)
-    pdf.set_font('Helvetica', '', 9)
-    pdf.set_text_color(109, 20, 56)
-    if email_draft:
-        pdf.multi_cell(0, 5, email_draft)
-    else:
-        pdf.cell(0, 6, "No email draft generated.")
+
+        # ── Key Decisions ───────────────────────────────────────────────────
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(255, 107, 157)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 8, "Key Decisions")
+        pdf.ln(8)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(50, 10, 40)
+        if decisions:
+            for i, d in enumerate(decisions, 1):
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(aw, 6, _pdf_safe_text(f"{i}. {d}"))
+        else:
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(aw, 6, "No decisions were finalized.")
+            pdf.ln(6)
         pdf.ln(6)
-        
-    return bytes(pdf.output())
+
+        # ── Action Items ────────────────────────────────────────────────────
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(255, 107, 157)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 8, "Action Items")
+        pdf.ln(8)
+        pdf.set_font('Helvetica', '', 10)
+        pdf.set_text_color(50, 10, 40)
+        if action_items:
+            for item in action_items:
+                task     = str(item.get("task", "Unknown Task"))[:300]   # hard cap
+                owner    = str(item.get("owner", "Unassigned"))[:80]
+                deadline = str(item.get("deadline") or "Not set")[:40]
+                priority = str(item.get("priority", "medium")).upper()[:10]
+                line = _pdf_safe_text(
+                    f"- [{priority}] {task} (Owner: {owner}, Due: {deadline})"
+                )
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(aw, 6, line)
+        else:
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(aw, 6, "No action items extracted.")
+            pdf.ln(6)
+        pdf.ln(6)
+
+        # ── Follow-up Email Draft ───────────────────────────────────────────
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(255, 107, 157)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(aw, 8, "Follow-up Email Draft")
+        pdf.ln(8)
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_text_color(109, 20, 56)
+        if email_draft:
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(aw, 5, _pdf_safe_text(email_draft))
+        else:
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(aw, 6, "No email draft generated.")
+            pdf.ln(6)
+
+        return bytes(pdf.output())
+
+    except Exception as _pdf_err:
+        # Return a minimal error PDF instead of crashing
+        fallback = MeetingReportPDF()
+        fallback.add_page()
+        fallback.set_font('Helvetica', 'B', 12)
+        fallback.set_text_color(200, 50, 50)
+        fallback.set_x(fallback.l_margin)
+        fallback.cell(0, 10, "PDF generation encountered an error.")
+        fallback.ln(10)
+        fallback.set_font('Helvetica', '', 10)
+        fallback.set_text_color(80, 80, 80)
+        fallback.set_x(fallback.l_margin)
+        fallback.multi_cell(0, 6, f"Details: {str(_pdf_err)[:500]}")
+        return bytes(fallback.output())
 
 
 # Page config
@@ -870,16 +917,114 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# Speaker Diarization Transcript Renderer
+# ─────────────────────────────────────────────
+
+# Palette for up to 6 speakers
+_SPEAKER_COLORS = [
+    ("#6D28D9", "#EDE9FE"),  # Speaker A — purple
+    ("#0369A1", "#E0F2FE"),  # Speaker B — blue
+    ("#047857", "#D1FAE5"),  # Speaker C — green
+    ("#B45309", "#FEF3C7"),  # Speaker D — amber
+    ("#BE123C", "#FFE4E6"),  # Speaker E — rose
+    ("#475569", "#F1F5F9"),  # Speaker F — slate
+]
+
+def _speaker_color(speaker_label: str) -> tuple[str, str]:
+    """Map a speaker label like 'Speaker A' to a (border, bg) color pair."""
+    import string
+    letter = speaker_label.strip().split()[-1].upper()
+    idx = string.ascii_uppercase.find(letter) if letter in string.ascii_uppercase else 0
+    return _SPEAKER_COLORS[idx % len(_SPEAKER_COLORS)]
+
+
+def render_diarized_transcript(transcript: str) -> None:
+    """
+    Render a transcript with speaker diarization labels as colored chat bubbles.
+    Falls back to plain text box for undiarized transcripts.
+
+    Expected format per line:
+        [Speaker A 00:01:23] Hello, let's start the meeting.
+    """
+    import re
+
+    pattern = re.compile(r'^\[Speaker ([A-Z]) (\d{2}:\d{2})\] (.+)$')
+    lines = [l for l in transcript.strip().split('\n') if l.strip()]
+
+    # Detect if this is a diarized transcript
+    diarized_lines = [m for l in lines for m in [pattern.match(l)] if m]
+    if not diarized_lines or len(diarized_lines) < len(lines) * 0.5:
+        # Plain transcript — render as before
+        st.markdown(f'<div class="transcript-box">{transcript}</div>', unsafe_allow_html=True)
+        return
+
+    # Show speaker legend
+    seen_speakers = []
+    for line in lines:
+        m = pattern.match(line)
+        if m:
+            spk = f"Speaker {m.group(1)}"
+            if spk not in seen_speakers:
+                seen_speakers.append(spk)
+
+    legend_chips = "".join(
+        f'<span style="background:{_speaker_color(s)[0]}22; border:1px solid {_speaker_color(s)[0]}55; '
+        f'color:{_speaker_color(s)[0]}; border-radius:20px; padding:3px 12px; font-size:0.8rem; '
+        f'font-weight:600; margin-right:0.5rem;">🎙 {s}</span>'
+        for s in seen_speakers
+    )
+    st.markdown(f'<div style="margin-bottom:1rem;">{legend_chips}</div>', unsafe_allow_html=True)
+
+    # Render each utterance as a styled bubble
+    html_parts = ['<div style="display:flex; flex-direction:column; gap:0.6rem;">']
+    for line in lines:
+        m = pattern.match(line)
+        if m:
+            letter, ts, text = m.group(1), m.group(2), m.group(3)
+            speaker = f"Speaker {letter}"
+            border_col, bg_col = _speaker_color(speaker)
+            # Dark-mode friendly: use dark bg with colored left border
+            html_parts.append(f"""
+            <div style="display:flex; align-items:flex-start; gap:0.75rem;">
+                <div style="min-width:90px; text-align:right;">
+                    <span style="font-size:0.72rem; font-weight:700; color:{border_col}; 
+                           letter-spacing:0.04em;">{speaker}</span><br>
+                    <span style="font-size:0.68rem; color:#64748B;">⏱ {ts}</span>
+                </div>
+                <div style="flex:1; background:rgba(255,255,255,0.04); border-left:3px solid {border_col}; 
+                       border-radius:0 8px 8px 0; padding:0.5rem 0.8rem;">
+                    <span style="color:#E2E8F0; font-size:0.9rem; line-height:1.5;">{text}</span>
+                </div>
+            </div>""")
+        else:
+            # Non-matching line — render as plain text
+            html_parts.append(f'<div style="color:#94A3B8; font-size:0.85rem; padding:0 0 0 110px;">{line}</div>')
+
+    html_parts.append('</div>')
+    st.markdown(''.join(html_parts), unsafe_allow_html=True)
+
+
 # API Helpers
 # ─────────────────────────────────────────────
 
 def api_get(path: str) -> dict | list | None:
     try:
-        r = requests.get(f"{API_URL}{path}", headers=AUTH_HEADERS, timeout=10)
+        r = requests.get(f"{API_URL}{path}", headers=AUTH_HEADERS, timeout=3)
         r.raise_for_status()
         return r.json()
     except Exception:
         return None
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def fetch_health() -> bool:
+    """Cached health check — runs at most every 30 s."""
+    try:
+        r = requests.get(f"{API_URL}/health", headers=AUTH_HEADERS, timeout=2)
+        return r.status_code == 200
+    except Exception:
+        return False
 
 
 def api_post_file(path: str, file_bytes: bytes, filename: str) -> dict | None:
@@ -895,6 +1040,37 @@ def api_post_file(path: str, file_bytes: bytes, filename: str) -> dict | None:
     except Exception as e:
         st.error(f"Upload failed: {e}")
         return None
+
+
+def api_delete(path: str) -> bool:
+    """Send DELETE request to the backend. Returns True on success."""
+    try:
+        r = requests.delete(f"{API_URL}{path}", headers=AUTH_HEADERS, timeout=API_TIMEOUT)
+        return r.status_code in (200, 204)
+    except Exception:
+        return False
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def fetch_meetings() -> list:
+    """Cached meetings list – refreshes at most every 10 s."""
+    try:
+        r = requests.get(f"{API_URL}/meetings", headers=AUTH_HEADERS, timeout=API_TIMEOUT)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def fetch_all_tasks() -> list:
+    """Cached tasks list – refreshes at most every 10 s."""
+    try:
+        r = requests.get(f"{API_URL}/meetings/tasks", headers=AUTH_HEADERS, timeout=API_TIMEOUT)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return []
 
 
 def priority_badge(priority: str) -> str:
@@ -951,8 +1127,8 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # Check backend connectivity
-    health = api_get("/health")
+    # Check backend connectivity (cached — no delay on every click)
+    health = fetch_health()
     db_status = "Connected" if health else "Offline"
     db_class = "status-val-online" if health else "status-val-offline"
     db_dot = "dot-online" if health else "dot-offline"
@@ -999,9 +1175,9 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-# Fetch meetings & tasks dynamically
-meetings = api_get("/meetings") or []
-all_tasks = api_get("/meetings/tasks") or []
+# Fetch meetings & tasks (cached – fast on every rerun)
+meetings  = fetch_meetings()
+all_tasks = fetch_all_tasks()
 
 # ─────────────────────────────────────────────
 # Page Rendering Functions
@@ -1208,11 +1384,11 @@ def render_dashboard_page():
                             r = requests.post(
                                 f"{API_URL}/meetings/{t['meeting_id']}/tasks/{t['task_index']}/toggle",
                                 headers=AUTH_HEADERS,
-                                timeout=10
+                                timeout=3
                             )
                             if r.status_code == 200:
-                                st.success("Task completed!")
-                                time.sleep(0.5)
+                                fetch_all_tasks.clear()
+                                st.toast("✅ Task completed!")
                                 st.rerun()
                         except Exception as e:
                             st.error(f"Error toggling task: {e}")
@@ -1358,73 +1534,106 @@ def render_history_page():
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button("Open Analysis", key=f"btn_hist_open_{m['id']}", use_container_width=True):
-                        st.session_state.selected_meeting_id = m["id"]
-                        st.rerun()
+
+                    # ── Action buttons row ──────────────────────────────────
+                    btn_open, btn_del = st.columns([3, 1])
+                    with btn_open:
+                        if st.button("Open Analysis", key=f"btn_hist_open_{m['id']}", use_container_width=True):
+                            st.session_state.selected_meeting_id = m["id"]
+                            st.rerun()
+                    with btn_del:
+                        # Use a session-state flag for a one-click confirm flow
+                        confirm_key = f"confirm_del_{m['id']}"
+                        if st.session_state.get(confirm_key):
+                            # Second click → actually delete
+                            if st.button("✓ Confirm", key=f"btn_del_confirm_{m['id']}",
+                                         use_container_width=True, type="primary"):
+                                if api_delete(f"/meetings/{m['id']}"):
+                                    st.session_state[confirm_key] = False
+                                    # Clear cache so refreshed list shows deletion
+                                    fetch_meetings.clear()
+                                    fetch_all_tasks.clear()
+                                    st.toast(f"🗑️ '{m['filename']}' deleted.", icon="✅")
+                                    st.rerun()
+                                else:
+                                    st.error("Delete failed. Check backend connection.")
+                                    st.session_state[confirm_key] = False
+                        else:
+                            if st.button("🗑️", key=f"btn_del_{m['id']}",
+                                         use_container_width=True,
+                                         help=f"Delete '{m['filename']}'?"):
+                                st.session_state[confirm_key] = True
+                                st.rerun()
+
                     st.markdown("<div style='margin-bottom:1.5rem;'></div>", unsafe_allow_html=True)
 
 
 def render_meeting_details(meeting_id: str):
-    # Poll backend for full dataset
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("← Back to History List", key="btn_back_list"):
         st.session_state.selected_meeting_id = None
         st.rerun()
-        
-    placeholder = st.empty()
-    poll_count = 0
-    
-    while True:
-        data = api_get(f"/meetings/{meeting_id}")
-        if not data:
-            st.error("Connection failed. Could not fetch meeting data.")
+
+    # ── Single non-blocking fetch ──────────────────────────────────────────
+    data = api_get(f"/meetings/{meeting_id}")
+    if not data:
+        st.error("⚠️ Could not connect to the backend. Is the server running on port 8001?")
+        return
+
+    status = data.get("status", "processing")
+
+    if status == "processing":
+        # Show spinner and schedule a rerun in 3 s — no blocking loop
+        poll_key = f"poll_count_{meeting_id}"
+        st.session_state.setdefault(poll_key, 0)
+        st.session_state[poll_key] += 1
+
+        if st.session_state[poll_key] > MAX_POLL_ATTEMPTS:
+            st.warning("⏳ Analysis is taking longer than expected. Refresh the page manually.")
             return
-            
-        status = data.get("status", "processing")
-        if status == "processing":
-            with placeholder.container():
-                st.markdown("""
-                    <div style="text-align:center; padding: 4rem 0;">
-                        <div style="font-size:3rem; margin-bottom:1rem; animation: pulse 2s infinite;">⚙️</div>
-                        <div style="color:#FF6B9D; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
-                            Processing your meeting...
-                        </div>
-                        <div style="color:#94A3B8; font-size:0.9rem;">
-                            Whisper Audio Transcription → Running 4 AI Agents Pipeline → Verifying Conflicts
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            time.sleep(POLL_INTERVAL_SECONDS)
-            poll_count += 1
-            if poll_count > MAX_POLL_ATTEMPTS:
-                st.warning("Analysis is taking longer than expected. Check connection logs.")
-                break
-            continue
-            
-        placeholder.empty()
-        if status == "failed":
-            st.error(f"❌ Processing failed: {data.get('error_message', 'Unknown error')}")
-            return
-            
-        # Extract fields
-        filename = data.get("filename", "Meeting")
-        decisions = data.get("decisions") or []
-        action_items = data.get("action_items") or []
-        open_questions = data.get("open_questions") or []
-        summary = data.get("summary") or ""
-        transcript = data.get("transcript") or ""
-        conflicts = data.get("conflicts") or []
-        email_draft = data.get("email_draft") or ""
-        
-        # Header title
-        st.markdown(f'<h1 class="main-title">📄 {filename}</h1>', unsafe_allow_html=True)
-        st.markdown(f'<p class="subtitle">Meeting Session ID: {meeting_id[:8]} &nbsp;|&nbsp; Date: {data.get("created_at", "")[:10]}</p>', unsafe_allow_html=True)
-        
-        # Exporter buttons row
-        st.markdown("### 📤 Export Center")
-        col_pdf, col_md, col_email, col_share = st.columns(4)
-        
-        with col_pdf:
+
+        st.markdown("""
+            <div style="text-align:center; padding: 4rem 0;">
+                <div style="font-size:3rem; margin-bottom:1rem;">⚙️</div>
+                <div style="color:#FF6B9D; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
+                    Processing your meeting...
+                </div>
+                <div style="color:#94A3B8; font-size:0.9rem;">
+                    Whisper Audio Transcription → Running 4 AI Agents Pipeline → Verifying Conflicts
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        time.sleep(POLL_INTERVAL_SECONDS)   # only sleeps once per rerun
+        st.rerun()   # triggers the next check without blocking the server
+        return
+
+    # Reset poll counter once done
+    st.session_state.pop(f"poll_count_{meeting_id}", None)
+
+    if status == "failed":
+        st.error(f"❌ Processing failed: {data.get('error_message', 'Unknown error')}")
+        return
+
+    # Extract fields
+    filename = data.get("filename", "Meeting")
+    decisions = data.get("decisions") or []
+    action_items = data.get("action_items") or []
+    open_questions = data.get("open_questions") or []
+    summary = data.get("summary") or ""
+    transcript = data.get("transcript") or ""
+    conflicts = data.get("conflicts") or []
+    email_draft = data.get("email_draft") or ""
+
+    # Header title
+    st.markdown(f'<h1 class="main-title">📄 {filename}</h1>', unsafe_allow_html=True)
+    st.markdown(f'<p class="subtitle">Meeting Session ID: {meeting_id[:8]} &nbsp;|&nbsp; Date: {data.get("created_at", "")[:10]}</p>', unsafe_allow_html=True)
+
+    # Exporter buttons row
+    st.markdown("### 📤 Export Center")
+    col_pdf, col_md, col_email, col_share = st.columns(4)
+
+    with col_pdf:
+        try:
             with st.spinner("Formatting PDF..."):
                 pdf_bytes = generate_meeting_pdf(filename, summary, decisions, action_items, email_draft)
             st.download_button(
@@ -1434,141 +1643,139 @@ def render_meeting_details(meeting_id: str):
                 mime="application/pdf",
                 use_container_width=True
             )
-            
-        with col_md:
-            # Markdown text
-            md_text = f"# {filename}\n\n## Executive Summary\n{summary}\n\n## Decisions\n" + "\n".join(f"- {d}" for d in decisions) + "\n\n## Action Items\n" + "\n".join(f"- {item.get('task')} (Owner: {item.get('owner')})" for item in action_items)
-            st.download_button(
-                label="📝 Export Markdown",
-                data=md_text,
-                file_name=f"Meeting_Report_{meeting_id[:8]}.md",
-                mime="text/markdown",
-                use_container_width=True
-            )
-            
-        with col_email:
-            # Copy email draft dummy
-            if st.button("📧 Copy Email to Clipboard", use_container_width=True):
-                st.toast("Email Draft copied to clipboard context!")
-                
-        with col_share:
-            if st.button("📤 Share Summary Link", use_container_width=True):
-                st.toast("Temporary share URL generated!")
-                
-        st.markdown("<br>", unsafe_allow_html=True)
+        except Exception as _export_err:
+            st.error(f"⚠️ PDF export failed: {_export_err}")
+            st.caption("Try again or use the Markdown export instead.")
 
-        # Tabs Layout
-        tab_summary, tab_decisions, tab_actions, tab_questions, tab_email, tab_chat, tab_transcript = st.tabs([
-            "📝 Summary",
-            f"🎯 Decisions ({len(decisions)})",
-            f"✅ Action Items ({len(action_items)})",
-            f"❓ Open Questions ({len(open_questions)})",
-            "📧 Follow-up Email",
-            "💬 Chat With Meeting",
-            "📄 Transcript"
-        ])
-        
-        with tab_summary:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if summary:
-                st.markdown(f'<div class="summary-box">{summary}</div>', unsafe_allow_html=True)
-            else:
-                st.info("No summary available.")
-                
-        with tab_decisions:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if decisions:
-                for d in decisions:
-                    st.markdown(f'<div class="decision-card">✅ {d}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="empty-state"><div class="empty-icon">🤷</div><div class="empty-text">No final decisions extracted.</div></div>', unsafe_allow_html=True)
-                
-        with tab_actions:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if action_items:
-                for idx, item in enumerate(action_items):
-                    col_t_chk, col_t_det = st.columns([1, 15])
-                    with col_t_chk:
-                        completed = item.get("completed", False)
-                        # We toggle by sending POST to backend index
-                        t_val = st.checkbox("", value=completed, key=f"chk_detail_{meeting_id}_{idx}")
-                        if t_val != completed:
-                            try:
-                                r = requests.post(
-                                    f"{API_URL}/meetings/{meeting_id}/tasks/{idx}/toggle",
-                                    headers=AUTH_HEADERS,
-                                    timeout=10
-                                )
-                                if r.status_code == 200:
-                                    st.toast("Task status updated!")
-                                    time.sleep(0.3)
-                                    st.rerun()
-                            except Exception as e:
-                                st.error(f"Toggling failed: {e}")
-                    with col_t_det:
-                        p_badge = priority_badge(item.get("priority", "medium"))
-                        st.markdown(f"""
-                        <div class="action-card">
-                            <div class="action-task" style="text-decoration: {'line-through' if completed else 'none'}; opacity: {'0.5' if completed else '1'};">🎯 {item.get('task')}</div>
-                            <div class="action-meta">
-                                <span class="badge badge-owner">👤 {item.get('owner', 'Unassigned')}</span>
-                                <span class="badge badge-due">📅 {item.get('deadline') or 'No deadline'}</span>
-                                {p_badge}
-                            </div>
+    with col_md:
+        md_text = f"# {filename}\n\n## Executive Summary\n{summary}\n\n## Decisions\n" + "\n".join(f"- {d}" for d in decisions) + "\n\n## Action Items\n" + "\n".join(f"- {item.get('task')} (Owner: {item.get('owner')})" for item in action_items)
+        st.download_button(
+            label="📝 Export Markdown",
+            data=md_text,
+            file_name=f"Meeting_Report_{meeting_id[:8]}.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
+
+    with col_email:
+        if st.button("📧 Copy Email to Clipboard", use_container_width=True):
+            st.toast("Email Draft copied to clipboard context!")
+
+    with col_share:
+        if st.button("📤 Share Summary Link", use_container_width=True):
+            st.toast("Temporary share URL generated!")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Tabs Layout
+    tab_summary, tab_decisions, tab_actions, tab_questions, tab_email, tab_chat, tab_transcript = st.tabs([
+        "📝 Summary",
+        f"🎯 Decisions ({len(decisions)})",
+        f"✅ Action Items ({len(action_items)})",
+        f"❓ Open Questions ({len(open_questions)})",
+        "📧 Follow-up Email",
+        "💬 Chat With Meeting",
+        "📄 Transcript"
+    ])
+
+    with tab_summary:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if summary:
+            st.markdown(f'<div class="summary-box">{summary}</div>', unsafe_allow_html=True)
+        else:
+            st.info("No summary available.")
+
+    with tab_decisions:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if decisions:
+            for d in decisions:
+                st.markdown(f'<div class="decision-card">✅ {d}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="empty-state"><div class="empty-icon">🤷</div><div class="empty-text">No final decisions extracted.</div></div>', unsafe_allow_html=True)
+
+    with tab_actions:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if action_items:
+            for idx, item in enumerate(action_items):
+                col_t_chk, col_t_det = st.columns([1, 15])
+                with col_t_chk:
+                    completed = item.get("completed", False)
+                    t_val = st.checkbox("", value=completed, key=f"chk_detail_{meeting_id}_{idx}")
+                    if t_val != completed:
+                        try:
+                            r = requests.post(
+                                f"{API_URL}/meetings/{meeting_id}/tasks/{idx}/toggle",
+                                headers=AUTH_HEADERS,
+                                timeout=3
+                            )
+                            if r.status_code == 200:
+                                st.toast("Task status updated!")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"Toggling failed: {e}")
+                with col_t_det:
+                    p_badge = priority_badge(item.get("priority", "medium"))
+                    st.markdown(f"""
+                    <div class="action-card">
+                        <div class="action-task" style="text-decoration: {'line-through' if completed else 'none'}; opacity: {'0.5' if completed else '1'};">🎯 {item.get('task')}</div>
+                        <div class="action-meta">
+                            <span class="badge badge-owner">👤 {item.get('owner', 'Unassigned')}</span>
+                            <span class="badge badge-due">📅 {item.get('deadline') or 'No deadline'}</span>
+                            {p_badge}
                         </div>
-                        """, unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="empty-state"><div class="empty-icon">✨</div><div class="empty-text">No action items found.</div></div>', unsafe_allow_html=True)
-                
-        with tab_questions:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if open_questions:
-                for q in open_questions:
-                    st.markdown(f'<div class="question-card">❓ {q}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="empty-state"><div class="empty-icon">🎉</div><div class="empty-text">All items resolved!</div></div>', unsafe_allow_html=True)
-                
-        with tab_email:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if email_draft:
-                st.code(email_draft, language="markdown")
-            else:
-                st.info("No follow-up email draft available.")
-                
-        with tab_chat:
-            st.markdown("<br>", unsafe_allow_html=True)
-            chat_key = f"chat_detail_history_{meeting_id}"
-            st.session_state.setdefault(chat_key, [])
-            
-            for msg in st.session_state[chat_key]:
-                with st.chat_message(msg["role"]):
-                    st.write(msg["content"])
-                    
-            u_query = st.chat_input("Ask a question about this meeting transcript:", key=f"chat_detail_input_{meeting_id}")
-            if u_query:
-                with st.chat_message("user"):
-                    st.write(u_query)
-                with st.spinner("AI analyzing transcript..."):
-                    payload = {"message": u_query, "history": st.session_state[chat_key]}
-                    try:
-                        r = requests.post(f"{API_URL}/meetings/{meeting_id}/chat", json=payload, headers=AUTH_HEADERS, timeout=30)
-                        if r.status_code == 200:
-                            ans = r.json().get("response", "No answer.")
-                            with st.chat_message("assistant"):
-                                st.write(ans)
-                            st.session_state[chat_key].append({"role": "user", "content": u_query})
-                            st.session_state[chat_key].append({"role": "assistant", "content": ans})
-                            st.rerun()
-                    except Exception as err:
-                        st.error(f"Error querying Chatbot: {err}")
-                        
-        with tab_transcript:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if transcript:
-                st.markdown(f'<div class="transcript-box">{transcript}</div>', unsafe_allow_html=True)
-            else:
-                st.info("Transcript not available.")
-        break
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="empty-state"><div class="empty-icon">✨</div><div class="empty-text">No action items found.</div></div>', unsafe_allow_html=True)
+
+    with tab_questions:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if open_questions:
+            for q in open_questions:
+                st.markdown(f'<div class="question-card">❓ {q}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="empty-state"><div class="empty-icon">🎉</div><div class="empty-text">All items resolved!</div></div>', unsafe_allow_html=True)
+
+    with tab_email:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if email_draft:
+            st.code(email_draft, language="markdown")
+        else:
+            st.info("No follow-up email draft available.")
+
+    with tab_chat:
+        st.markdown("<br>", unsafe_allow_html=True)
+        chat_key = f"chat_detail_history_{meeting_id}"
+        st.session_state.setdefault(chat_key, [])
+
+        for msg in st.session_state[chat_key]:
+            with st.chat_message(msg["role"]):
+                st.write(msg["content"])
+
+        u_query = st.chat_input("Ask a question about this meeting transcript:", key=f"chat_detail_input_{meeting_id}")
+        if u_query:
+            with st.chat_message("user"):
+                st.write(u_query)
+            with st.spinner("AI analyzing transcript..."):
+                payload = {"message": u_query, "history": st.session_state[chat_key]}
+                try:
+                    r = requests.post(f"{API_URL}/meetings/{meeting_id}/chat", json=payload, headers=AUTH_HEADERS, timeout=30)
+                    if r.status_code == 200:
+                        ans = r.json().get("response", "No answer.")
+                        with st.chat_message("assistant"):
+                            st.write(ans)
+                        st.session_state[chat_key].append({"role": "user", "content": u_query})
+                        st.session_state[chat_key].append({"role": "assistant", "content": ans})
+                        st.rerun()
+                except Exception as err:
+                    st.error(f"Error querying Chatbot: {err}")
+
+    with tab_transcript:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if transcript:
+            render_diarized_transcript(transcript)
+        else:
+            st.info("Transcript not available.")
 
 
 def render_search_page():
@@ -1591,7 +1798,7 @@ def render_search_page():
                     f"{API_URL}/meetings/search",
                     params={"query": search_query},
                     headers=AUTH_HEADERS,
-                    timeout=20,
+                    timeout=8,
                 )
                 if r.status_code == 200:
                     res = r.json()
@@ -1673,11 +1880,11 @@ def render_tasks_page():
                         r = requests.post(
                             f"{API_URL}/meetings/{t['meeting_id']}/tasks/{t['task_index']}/toggle",
                             headers=AUTH_HEADERS,
-                            timeout=10
+                            timeout=3
                         )
                         if r.status_code == 200:
+                            fetch_all_tasks.clear()
                             st.toast("Task board updated!")
-                            time.sleep(0.3)
                             st.rerun()
                     except Exception as e:
                         st.error(f"Failed to update task: {e}")
@@ -1817,20 +2024,20 @@ def render_conflicts_page():
             with col_res:
                 if st.button("🔓 Resolve & Keep New", key=f"btn_resolve_keep_{m_id}_{c_idx}", use_container_width=True):
                     try:
-                        r = requests.post(f"{API_URL}/meetings/{m_id}/conflicts/{c_idx}/resolve", headers=AUTH_HEADERS, timeout=10)
+                        r = requests.post(f"{API_URL}/meetings/{m_id}/conflicts/{c_idx}/resolve", headers=AUTH_HEADERS, timeout=3)
                         if r.status_code == 200:
-                            st.success("Resolved conflict successfully!")
-                            time.sleep(0.5)
+                            fetch_meetings.clear()
+                            st.toast("✅ Conflict resolved!")
                             st.rerun()
                     except Exception as err:
                         st.error(f"API post failed: {err}")
             with col_dism:
                 if st.button("Dismiss Contradiction", key=f"btn_resolve_dismiss_{m_id}_{c_idx}", use_container_width=True):
                     try:
-                        r = requests.post(f"{API_URL}/meetings/{m_id}/conflicts/{c_idx}/resolve", headers=AUTH_HEADERS, timeout=10)
+                        r = requests.post(f"{API_URL}/meetings/{m_id}/conflicts/{c_idx}/resolve", headers=AUTH_HEADERS, timeout=3)
                         if r.status_code == 200:
+                            fetch_meetings.clear()
                             st.toast("Dismissed conflict warning.")
-                            time.sleep(0.3)
                             st.rerun()
                     except Exception as err:
                         st.error(f"API post failed: {err}")
@@ -1858,7 +2065,7 @@ def render_assistant_page():
         with st.spinner("AI Assistant searching transcripts database..."):
             try:
                 # Use semantic search as the RAG backend
-                r = requests.get(f"{API_URL}/meetings/search", params={"query": user_i}, headers=AUTH_HEADERS, timeout=20)
+                r = requests.get(f"{API_URL}/meetings/search", params={"query": user_i}, headers=AUTH_HEADERS, timeout=8)
                 if r.status_code == 200:
                     ans = r.json().get("answer", "No response could be formulated.")
                     with st.chat_message("assistant"):
