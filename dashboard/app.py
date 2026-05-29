@@ -129,15 +129,15 @@ st.markdown("""
         font-family: 'Outfit', sans-serif;
     }
 
-    /* Main App background */
+    /* Main App background - near-black */
     .stApp {
-        background-color: #160414 !important;
+        background-color: #0B0B12 !important;
     }
 
-    /* Sidebar container styling */
+    /* Sidebar container styling - dark charcoal background, very subtle wine gradient */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #2B0A1A 0%, #4A102A 50%, #6D1438 100%) !important;
-        border-right: 1px solid rgba(255, 107, 157, 0.15) !important;
+        background: linear-gradient(180deg, #12121A 0%, #1A0E18 100%) !important;
+        border-right: 1px solid rgba(255, 107, 157, 0.1) !important;
         backdrop-filter: blur(20px) !important;
     }
 
@@ -162,7 +162,7 @@ st.markdown("""
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] .stMarkdown p,
     section[data-testid="stSidebar"] .empty-text {
-        color: #D8B4C8 !important; /* Secondary text: #D8B4C8 */
+        color: #94A3B8 !important; /* Secondary text: #94A3B8 for clean readability */
         font-family: 'Outfit', sans-serif !important;
     }
 
@@ -170,36 +170,37 @@ st.markdown("""
     section[data-testid="stSidebar"] button {
         background-color: transparent !important;
         border: none !important;
-        color: #D8B4C8 !important; /* Secondary Text: #D8B4C8 */
+        color: #94A3B8 !important; /* Secondary Text */
         text-align: left !important;
         display: flex !important;
         justify-content: flex-start !important;
-        padding: 0.65rem 0.9rem !important;
-        border-radius: 10px !important;
+        padding: 0.55rem 0.8rem !important; /* Smaller hover / navigation padding */
+        border-radius: 6px !important;
         font-family: 'Outfit', sans-serif !important;
-        font-size: 0.95rem !important;
+        font-size: 0.92rem !important;
         font-weight: 500 !important;
         transition: all 0.2s ease !important;
-        margin-bottom: 0.2rem !important;
+        margin-bottom: 0.15rem !important; /* Cleaner spacing */
         box-shadow: none !important;
     }
 
     section[data-testid="stSidebar"] button:hover {
-        background-color: rgba(255, 107, 157, 0.1) !important; /* Muted accent highlight */
+        background-color: rgba(255, 107, 157, 0.08) !important; /* Smaller hover color */
         color: #FFFFFF !important;
-        transform: translateX(4px) !important;
+        transform: translateX(2px) !important; /* Smaller hover offset */
     }
 
-    /* Active navigation button in sidebar */
+    /* Active navigation button in sidebar - side indicator, no saturated gradient box */
     .active-menu-box button {
-        background: linear-gradient(90deg, #FF6B9D 0%, #FF8FAB 100%) !important; /* Pink accent gradient */
+        background-color: rgba(109, 20, 56, 0.2) !important; /* Deep wine accent (#6D1438) at 20% */
+        border-left: 3px solid #FF6B9D !important; /* Accent pink border indicator */
         color: #FFFFFF !important;
         font-weight: 600 !important;
-        box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3) !important;
+        border-radius: 0 6px 6px 0 !important;
     }
     
     .active-menu-box button:hover {
-        background: linear-gradient(90deg, #FF6B9D 0%, #FF8FAB 100%) !important;
+        background-color: rgba(109, 20, 56, 0.2) !important;
         color: #FFFFFF !important;
         transform: none !important;
     }
@@ -209,24 +210,24 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 0.8rem;
-        background-color: rgba(50, 10, 40, 0.6) !important; /* Card background #320A28 */
-        border: 1px solid rgba(255, 107, 157, 0.15) !important;
-        border-radius: 12px;
-        padding: 0.7rem 0.9rem;
+        background-color: rgba(22, 22, 36, 0.5) !important; /* Card background #161624 */
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 10px;
+        padding: 0.6rem 0.8rem;
         margin-top: 1rem;
     }
 
     .avatar {
-        background: linear-gradient(135deg, #FF6B9D, #FF8FAB);
+        background: linear-gradient(135deg, #6D1438, #FF6B9D);
         color: #FFFFFF;
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
 
     .profile-info {
@@ -237,21 +238,21 @@ st.markdown("""
     .profile-name {
         color: #FFFFFF !important;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         line-height: 1.2;
     }
 
     .profile-role {
-        color: #D8B4C8 !important; /* Secondary Text: #D8B4C8 */
-        font-size: 0.75rem;
+        color: #94A3B8 !important; /* Secondary Text */
+        font-size: 0.72rem;
     }
 
     /* Sidebar status block */
     .sidebar-status {
-        background-color: rgba(50, 10, 40, 0.5) !important;
+        background-color: rgba(22, 22, 36, 0.4) !important;
         border-radius: 8px;
-        padding: 0.5rem 0.8rem;
-        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.82rem;
         font-weight: 500;
         display: flex;
         align-items: center;
@@ -260,336 +261,334 @@ st.markdown("""
     }
 
     .status-online {
-        border: 1px solid rgba(34, 197, 94, 0.25) !important;
+        border: 1px solid rgba(34, 197, 94, 0.2) !important;
         color: #22C55E !important; /* Success: #22C55E */
     }
 
     .status-offline {
-        border: 1px solid rgba(239, 68, 68, 0.25) !important;
+        border: 1px solid rgba(239, 68, 68, 0.2) !important;
         color: #EF4444 !important; /* Danger: #EF4444 */
     }
 
     .status-indicator {
         display: inline-block;
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
     }
 
     .status-online .status-indicator {
         background-color: #22C55E;
-        box-shadow: 0 0 8px #22C55E;
+        box-shadow: 0 0 6px #22C55E;
         animation: pulse-green 2s infinite;
     }
 
     .status-offline .status-indicator {
         background-color: #EF4444;
-        box-shadow: 0 0 8px #EF4444;
+        box-shadow: 0 0 6px #EF4444;
         animation: pulse-red 2s infinite;
     }
 
     .status-hint {
-        font-size: 0.72rem;
-        color: #D8B4C8;
+        font-size: 0.7rem;
+        color: #94A3B8;
         margin-top: 0.15rem;
     }
 
     @keyframes pulse-green {
-        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-        70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+        70% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
         100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
     }
 
     @keyframes pulse-red {
-        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+        70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
         100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
 
     /* Sidebar dividers */
     section[data-testid="stSidebar"] hr {
-        border-color: rgba(255, 107, 157, 0.15) !important;
-        margin: 1rem 0 !important;
+        border-color: rgba(255, 107, 157, 0.1) !important;
+        margin: 0.8rem 0 !important;
     }
 
-    /* Main title with wine-to-pink gradient */
+    /* Main title - clean white, no saturated gradient fill */
     .main-title {
-        font-size: 2.4rem;
+        font-size: 2.2rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #FFFFFF, #FF8FAB, #FF6B9D);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 0.2rem;
+        color: #FFFFFF !important;
+        margin-bottom: 0.3rem;
+        letter-spacing: -0.02em;
     }
 
     .subtitle {
-        color: #D8B4C8; /* Secondary Text */
-        font-size: 1.05rem;
-        margin-bottom: 2rem;
+        color: #94A3B8; /* Muted Slate secondary text */
+        font-size: 0.98rem;
+        margin-bottom: 2.5rem; /* More breathing room */
     }
 
-    /* Cards with transparent borders & glassmorphism */
+    /* Cards - clean slate backgrounds, minimal shadows, subtle borders */
     .dashboard-card {
-        background-color: rgba(50, 10, 40, 0.6) !important; /* Card background #320A28 */
-        border: 1px solid rgba(255, 107, 157, 0.12) !important;
-        border-radius: 16px;
-        padding: 1.4rem 1.6rem;
-        margin-bottom: 1rem;
+        background-color: rgba(22, 22, 36, 0.7) !important; /* Lighter Card background: #161624 */
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem; /* More breathing room between sections */
         backdrop-filter: blur(12px);
-        box-shadow: 0 8px 32px 0 rgba(44, 8, 28, 0.3);
+        box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.2); /* Reduced shadows by 50% */
         transition: all 0.25s ease;
     }
 
     .dashboard-card:hover {
-        border-color: rgba(255, 107, 157, 0.3) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 12px 40px 0 rgba(255, 107, 157, 0.12);
+        border-color: rgba(255, 107, 157, 0.2) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.25);
     }
 
     .dashboard-card-title {
         color: #FFFFFF !important;
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         font-weight: 600;
-        margin-bottom: 1rem;
+        margin-bottom: 1.2rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
 
-    /* KPI metric cards */
+    /* KPI metric cards - slightly lighter card backgrounds, clean borders, less glow */
     .kpi-card {
-        background-color: rgba(50, 10, 40, 0.6) !important;
-        border: 1px solid rgba(255, 107, 157, 0.12) !important;
-        border-radius: 16px;
-        padding: 1.2rem 1.1rem;
+        background-color: rgba(26, 26, 42, 0.8) !important; /* Lighter card background for contrast */
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 12px;
+        padding: 1.1rem 1rem;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        box-shadow: 0 8px 32px 0 rgba(44, 8, 28, 0.2);
-        transition: all 0.25s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Less glow */
+        transition: all 0.2s ease;
         height: 100%;
     }
 
     .kpi-card:hover {
-        border-color: rgba(255, 107, 157, 0.4) !important;
-        transform: translateY(-3px);
-        box-shadow: 0 12px 40px 0 rgba(255, 107, 157, 0.15);
+        border-color: rgba(255, 107, 157, 0.25) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     .kpi-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.5rem;
     }
 
     .kpi-icon {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
     }
 
     .kpi-trend {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         font-weight: 600;
-        padding: 0.15rem 0.4rem;
-        border-radius: 6px;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
     }
 
     .trend-up {
-        background-color: rgba(34, 197, 94, 0.15);
+        background-color: rgba(34, 197, 94, 0.12);
         color: #22C55E;
     }
 
     .trend-down {
-        background-color: rgba(148, 163, 184, 0.15);
-        color: #D8B4C8;
+        background-color: rgba(148, 163, 184, 0.12);
+        color: #94A3B8;
     }
 
     .trend-warn {
-        background-color: rgba(239, 68, 68, 0.15);
+        background-color: rgba(239, 68, 68, 0.12);
         color: #EF4444;
     }
 
     .kpi-value {
-        font-size: 2.1rem;
+        font-size: 1.9rem;
         font-weight: 700;
         color: #FFFFFF;
         line-height: 1.1;
     }
 
     .kpi-label {
-        font-size: 0.8rem;
-        color: #D8B4C8; /* Secondary text */
+        font-size: 0.76rem;
+        color: #94A3B8; /* Muted Slate */
         margin-top: 0.3rem;
         font-weight: 500;
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.04em;
     }
 
-    /* Recent meeting item info */
+    /* Recent meeting item info - clean slate borders, no saturated card fill */
     .meeting-card-info {
-        background-color: rgba(50, 10, 40, 0.4) !important;
-        border: 1px solid rgba(255, 107, 157, 0.1) !important;
-        border-radius: 12px;
+        background-color: rgba(22, 22, 36, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 10px;
         padding: 0.9rem 1.1rem;
-        margin-bottom: 0.8rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        transition: all 0.25s ease;
+        margin-bottom: 0.7rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        transition: all 0.2s ease;
     }
 
     .meeting-card-info:hover {
-        border-color: rgba(255, 107, 157, 0.25) !important;
-        background-color: rgba(50, 10, 40, 0.65) !important;
+        border-color: rgba(255, 107, 157, 0.2) !important;
+        background-color: rgba(22, 22, 36, 0.6) !important;
     }
 
     .meeting-card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.3rem;
     }
 
     .meeting-card-title {
         color: #FFFFFF;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
     }
 
     .meeting-card-meta {
         display: flex;
         gap: 0.8rem;
-        font-size: 0.78rem;
-        color: #D8B4C8; /* Secondary text */
-        margin-bottom: 0.6rem;
+        font-size: 0.76rem;
+        color: #94A3B8; /* Secondary text */
+        margin-bottom: 0.5rem;
     }
 
     .meeting-card-preview {
-        color: #D8B4C8;
-        font-size: 0.85rem;
+        color: #94A3B8;
+        font-size: 0.82rem;
         line-height: 1.4;
         margin-bottom: 0.4rem;
     }
 
     /* Decision card */
     .decision-card {
-        background: rgba(34, 197, 94, 0.08);
+        background: rgba(34, 197, 94, 0.05);
         border-left: 3px solid #22C55E;
-        border-radius: 0 12px 12px 0;
-        padding: 0.9rem 1.2rem;
-        margin-bottom: 0.6rem;
+        border-radius: 0 8px 8px 0;
+        padding: 0.8rem 1.1rem;
+        margin-bottom: 0.5rem;
         color: #FFFFFF;
-        font-size: 0.95rem;
-        line-height: 1.6;
+        font-size: 0.92rem;
+        line-height: 1.5;
     }
 
     /* Action item card */
     .action-card {
-        background: rgba(50, 10, 40, 0.5);
-        border: 1px solid rgba(255, 107, 157, 0.15);
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        margin-bottom: 0.7rem;
-        backdrop-filter: blur(12px);
+        background: rgba(22, 22, 36, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 0.6rem;
+        backdrop-filter: blur(8px);
     }
 
     .action-task {
         color: #FFFFFF;
         font-weight: 500;
-        font-size: 0.95rem;
-        margin-bottom: 0.5rem;
+        font-size: 0.92rem;
+        margin-bottom: 0.4rem;
     }
 
     .action-meta {
         display: flex;
-        gap: 0.6rem;
+        gap: 0.5rem;
         flex-wrap: wrap;
     }
 
     /* Question card */
     .question-card {
-        background: rgba(245, 158, 11, 0.07);
+        background: rgba(245, 158, 11, 0.04);
         border-left: 3px solid #F59E0B;
-        border-radius: 0 12px 12px 0;
-        padding: 0.9rem 1.2rem;
-        margin-bottom: 0.6rem;
+        border-radius: 0 8px 8px 0;
+        padding: 0.8rem 1.1rem;
+        margin-bottom: 0.5rem;
         color: #FFFFFF;
-        font-size: 0.95rem;
-        line-height: 1.6;
+        font-size: 0.92rem;
+        line-height: 1.5;
     }
 
     /* Priority badges */
     .badge {
         display: inline-block;
-        padding: 0.2rem 0.6rem;
-        border-radius: 6px;
-        font-size: 0.75rem;
+        padding: 0.18rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
     }
     
     .badge-high {
-        background-color: rgba(239, 68, 68, 0.15);
+        background-color: rgba(239, 68, 68, 0.1);
         color: #EF4444;
-        border: 1px solid rgba(239, 68, 68, 0.25);
+        border: 1px solid rgba(239, 68, 68, 0.15);
     }
     
     .badge-medium {
-        background-color: rgba(245, 158, 11, 0.15);
+        background-color: rgba(245, 158, 11, 0.1);
         color: #F59E0B;
-        border: 1px solid rgba(245, 158, 11, 0.25);
+        border: 1px solid rgba(245, 158, 11, 0.15);
     }
     
     .badge-low {
-        background-color: rgba(34, 197, 94, 0.15);
+        background-color: rgba(34, 197, 94, 0.1);
         color: #22C55E;
-        border: 1px solid rgba(34, 197, 94, 0.25);
+        border: 1px solid rgba(34, 197, 94, 0.15);
     }
     
     .badge-owner {
-        background-color: rgba(255, 107, 157, 0.15);
+        background-color: rgba(255, 107, 157, 0.1);
         color: #FF8FAB;
-        border: 1px solid rgba(255, 107, 157, 0.25);
+        border: 1px solid rgba(255, 107, 157, 0.15);
     }
     
     .badge-due {
-        background-color: rgba(216, 180, 200, 0.15);
-        color: #D8B4C8;
-        border: 1px solid rgba(216, 180, 200, 0.25);
+        background-color: rgba(148, 163, 184, 0.1);
+        color: #94A3B8;
+        border: 1px solid rgba(148, 163, 184, 0.15);
     }
 
     .badge-status {
-        background-color: rgba(255, 107, 157, 0.15);
+        background-color: rgba(255, 107, 157, 0.1);
         color: #FF6B9D;
-        border: 1px solid rgba(255, 107, 157, 0.25);
+        border: 1px solid rgba(255, 107, 157, 0.15);
     }
 
     .badge-conflict {
-        background-color: rgba(239, 68, 68, 0.15);
+        background-color: rgba(239, 68, 68, 0.1);
         color: #EF4444;
-        border: 1px solid rgba(239, 68, 68, 0.25);
+        border: 1px solid rgba(239, 68, 68, 0.15);
     }
 
     /* Summary box */
     .summary-box {
-        background: rgba(50, 10, 40, 0.5);
-        border: 1px solid rgba(255, 107, 157, 0.15);
-        border-radius: 16px;
-        padding: 1.4rem 1.6rem;
-        color: #D8B4C8;
-        font-size: 1rem;
-        line-height: 1.8;
+        background: rgba(22, 22, 36, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.3rem 1.5rem;
+        color: #94A3B8;
+        font-size: 0.98rem;
+        line-height: 1.7;
         backdrop-filter: blur(12px);
     }
 
     /* AI Insight card */
     .insight-card {
-        background-color: rgba(50, 10, 40, 0.5) !important;
-        border: 1px solid rgba(255, 107, 157, 0.15) !important;
+        background-color: rgba(22, 22, 36, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
         border-left: 4px solid #FF6B9D !important;
-        border-radius: 12px;
-        padding: 0.9rem 1.1rem;
-        margin-bottom: 0.8rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        margin-bottom: 0.7rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .insight-card-header {
@@ -602,61 +601,61 @@ st.markdown("""
     .insight-title {
         color: #FFFFFF;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
     }
 
     .insight-desc {
-        color: #D8B4C8;
-        font-size: 0.85rem;
+        color: #94A3B8;
+        font-size: 0.82rem;
         line-height: 1.4;
     }
 
-    /* Conflict Resolution Container */
+    /* Conflict Resolution Container - visually clean, less red saturation */
     .conflict-container {
-        background-color: rgba(239, 68, 68, 0.05) !important;
-        border: 1px solid rgba(239, 68, 68, 0.25) !important;
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 8px 32px 0 rgba(239, 68, 68, 0.08);
+        background-color: rgba(239, 68, 68, 0.03) !important;
+        border: 1px solid rgba(239, 68, 68, 0.18) !important;
+        border-radius: 12px;
+        padding: 1.3rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 6px 20px 0 rgba(0,0,0,0.1);
     }
 
     .conflict-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1rem;
     }
 
     .conflict-badge {
-        background-color: rgba(239, 68, 68, 0.15);
+        background-color: rgba(239, 68, 68, 0.1);
         color: #EF4444;
         font-weight: 700;
-        font-size: 0.78rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 6px;
-        letter-spacing: 0.05em;
+        font-size: 0.74rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        letter-spacing: 0.04em;
     }
 
     .conflict-date {
-        color: #D8B4C8;
-        font-size: 0.85rem;
+        color: #94A3B8;
+        font-size: 0.8rem;
     }
 
     .conflict-comparison {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        margin-bottom: 1.2rem;
+        gap: 0.8rem;
+        margin-bottom: 1rem;
     }
 
     .conflict-card {
         flex: 1;
-        background-color: rgba(50, 10, 40, 0.6);
-        border-radius: 12px;
-        padding: 1rem 1.2rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255, 107, 157, 0.08);
+        background-color: rgba(22, 22, 36, 0.6);
+        border-radius: 10px;
+        padding: 0.9rem 1.1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .new-decision {
@@ -664,57 +663,57 @@ st.markdown("""
     }
 
     .past-decision {
-        border-left: 4px solid #D8B4C8;
+        border-left: 4px solid #94A3B8;
     }
 
     .conflict-card-label {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         font-weight: 600;
         color: #FF8FAB;
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.25rem;
         letter-spacing: 0.03em;
     }
 
     .conflict-card-text {
         color: #FFFFFF;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 500;
-        line-height: 1.5;
+        line-height: 1.4;
     }
 
     .conflict-vs {
-        font-size: 1.1rem;
+        font-size: 0.98rem;
         font-weight: 700;
         color: #FF6B9D;
-        background-color: rgba(255, 107, 157, 0.1);
-        width: 36px;
-        height: 36px;
+        background-color: rgba(255, 107, 157, 0.08);
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(255, 107, 157, 0.2);
+        border: 1px solid rgba(255, 107, 157, 0.15);
     }
 
     .conflict-explanation {
-        background-color: rgba(50, 10, 40, 0.4);
-        border-radius: 8px;
-        padding: 0.8rem 1rem;
-        color: #D8B4C8;
-        font-size: 0.88rem;
-        line-height: 1.6;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+        background-color: rgba(22, 22, 36, 0.4);
+        border-radius: 6px;
+        padding: 0.75rem 0.9rem;
+        color: #94A3B8;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        border: 1px solid rgba(255, 255, 255, 0.02);
     }
 
     /* Transcript box */
     .transcript-box {
-        background: rgba(0,0,0,0.3);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 12px;
-        padding: 1.2rem;
-        color: #D8B4C8;
-        font-size: 0.88rem;
-        line-height: 1.7;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 10px;
+        padding: 1.1rem;
+        color: #94A3B8;
+        font-size: 0.86rem;
+        line-height: 1.6;
         max-height: 350px;
         overflow-y: auto;
         font-family: 'Outfit', monospace;
@@ -725,43 +724,43 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] {
         gap: 0.5rem;
         background: transparent;
-        border-bottom: 1px solid rgba(255, 107, 157, 0.15);
+        border-bottom: 1px solid rgba(255, 107, 157, 0.1);
     }
 
     .stTabs [data-baseweb="tab"] {
         background: transparent;
-        color: #D8B4C8;
-        border-radius: 8px 8px 0 0;
-        padding: 0.6rem 1.4rem;
-        font-size: 0.95rem;
+        color: #94A3B8;
+        border-radius: 6px 6px 0 0;
+        padding: 0.5rem 1.2rem;
+        font-size: 0.9rem;
         font-weight: 500;
         transition: all 0.2s ease;
     }
 
     .stTabs [aria-selected="true"] {
-        background: rgba(255, 107, 157, 0.12) !important;
+        background: rgba(255, 107, 157, 0.08) !important;
         color: #FF6B9D !important;
         border-bottom: 2px solid #FF6B9D !important;
     }
 
     /* Text input and select box custom styles */
     .stTextInput input, .stSelectbox [role="combobox"] {
-        background-color: #320A28 !important;
-        border: 1px solid rgba(255, 107, 157, 0.2) !important;
+        background-color: #12121C !important;
+        border: 1px solid rgba(255, 107, 157, 0.15) !important;
         color: #FFFFFF !important;
-        border-radius: 10px !important;
+        border-radius: 8px !important;
         font-family: 'Outfit', sans-serif !important;
     }
     
     .stTextInput input:focus, .stSelectbox [role="combobox"]:focus {
         border-color: #FF6B9D !important;
-        box-shadow: 0 0 10px rgba(255, 107, 157, 0.25) !important;
+        box-shadow: 0 0 8px rgba(255, 107, 157, 0.18) !important;
     }
 
     /* Upload area */
     .upload-hint {
-        color: #D8B4C8;
-        font-size: 0.85rem;
+        color: #94A3B8;
+        font-size: 0.82rem;
         text-align: center;
         margin-top: 0.5rem;
     }
@@ -770,10 +769,10 @@ st.markdown("""
     .empty-state {
         text-align: center;
         padding: 3rem 1rem;
-        color: #D8B4C8;
+        color: #94A3B8;
     }
-    .empty-icon { font-size: 3rem; margin-bottom: 0.8rem; }
-    .empty-text { font-size: 0.95rem; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.6rem; }
+    .empty-text { font-size: 0.9rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -866,7 +865,7 @@ with st.sidebar:
         <div class="sidebar-status status-online">
             <span class="status-indicator"></span>
             <div>
-                <div style="font-size:0.75rem; color:#D8B4C8; font-weight:500;">System Status</div>
+                <div style="font-size:0.75rem; color:#94A3B8; font-weight:500;">System Status</div>
                 <div style="font-weight:600; color:#22C55E; font-size:0.85rem; margin-top:0.1rem;">🟢 Operational</div>
             </div>
         </div>
@@ -876,7 +875,7 @@ with st.sidebar:
         <div class="sidebar-status status-offline">
             <span class="status-indicator"></span>
             <div>
-                <div style="font-size:0.75rem; color:#D8B4C8; font-weight:500;">System Status</div>
+                <div style="font-size:0.75rem; color:#94A3B8; font-weight:500;">System Status</div>
                 <div style="font-weight:600; color:#EF4444; font-size:0.85rem; margin-top:0.1rem;">🔴 Offline</div>
                 <div class="status-hint">Run: python run_backend.py</div>
             </div>
@@ -1076,7 +1075,7 @@ def render_dashboard_page():
                 workloads[o] = workloads.get(o, 0) + 1
             if workloads:
                 sorted_workloads = dict(sorted(workloads.items(), key=lambda x: x[1], reverse=True))
-                st.markdown("<small style='color:#D8B4C8'>Tasks Assignment by Owner</small>", unsafe_allow_html=True)
+                st.markdown("<small style='color:#94A3B8'>Tasks Assignment by Owner</small>", unsafe_allow_html=True)
                 st.bar_chart(sorted_workloads)
             else:
                 st.caption("No workload metrics found.")
@@ -1120,7 +1119,7 @@ def render_dashboard_page():
                     st.markdown(f"""
                     <div style="margin-bottom: 0.6rem;">
                         <span style="color:#FFFFFF; font-weight:500; font-size:0.9rem;">{t['task']}</span>
-                        <div style="font-size:0.75rem; color:#D8B4C8; margin-top:0.15rem; display:flex; gap:0.6rem; align-items:center;">
+                        <div style="font-size:0.75rem; color:#94A3B8; margin-top:0.15rem; display:flex; gap:0.6rem; align-items:center;">
                             <span>👤 {t.get('owner', 'Unassigned')}</span>
                             <span>📅 {t.get('deadline') or 'No deadline'}</span>
                             {p_badge}
@@ -1288,7 +1287,7 @@ def render_meeting_details(meeting_id: str):
                         <div style="color:#FF6B9D; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
                             Processing your meeting...
                         </div>
-                        <div style="color:#D8B4C8; font-size:0.9rem;">
+                        <div style="color:#94A3B8; font-size:0.9rem;">
                             Whisper Audio Transcription → Running 4 AI Agents Pipeline → Verifying Conflicts
                         </div>
                     </div>
@@ -1588,7 +1587,7 @@ def render_tasks_page():
                     <div style="color: {'rgba(255,255,255,0.5)' if completed else '#FFFFFF'}; text-decoration: {'line-through' if completed else 'none'}; font-weight: 500; font-size: 0.92rem;">
                         {t['task']}
                     </div>
-                    <div style="font-size: 0.76rem; color: #D8B4C8; margin-top: 0.3rem; display: flex; gap: 0.8rem; align-items: center;">
+                    <div style="font-size: 0.76rem; color: #94A3B8; margin-top: 0.3rem; display: flex; gap: 0.8rem; align-items: center;">
                         <span>👤 {t.get('owner', 'Unassigned')}</span>
                         <span>📅 {t.get('deadline') or 'No deadline'}</span>
                         <span style="font-style: italic;">🎙️ {t.get('meeting_filename', '')[:25]}</span>
@@ -1677,7 +1676,7 @@ def render_conflicts_page():
             <div style="color:#22C55E; font-weight:600; font-size:1.1rem; margin-bottom:0.4rem;">
                 All Decisions Aligned
             </div>
-            <div style="color:#D8B4C8; font-size:0.92rem;">
+            <div style="color:#94A3B8; font-size:0.92rem;">
                 No decision conflicts detected across meeting transcripts. Everything is consistent!
             </div>
         </div>
@@ -1777,7 +1776,7 @@ def render_settings_page():
         st.markdown("""
         <div class="dashboard-card">
             <div class="dashboard-card-title">🔌 Backend Configuration</div>
-            <div style="color:#D8B4C8; font-size:0.9rem; margin-bottom:1rem;">
+            <div style="color:#94A3B8; font-size:0.9rem; margin-bottom:1rem;">
                 Set endpoint ports and auth keys. Changing these updates connectivity flags.
             </div>
         </div>
