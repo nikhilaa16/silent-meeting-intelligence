@@ -158,7 +158,6 @@ st.markdown("""
     }
 
     section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span,
     section[data-testid="stSidebar"] label,
     section[data-testid="stSidebar"] .stMarkdown p,
     section[data-testid="stSidebar"] .empty-text {
