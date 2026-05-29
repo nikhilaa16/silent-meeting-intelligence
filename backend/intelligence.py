@@ -33,7 +33,7 @@ import json
 import logging
 from typing import Optional, TypedDict
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_groq import ChatGroq
 from langgraph.graph import END, StateGraph
 
@@ -630,3 +630,57 @@ Return ONLY the final synthesized answer with proper citations. Do not write any
             "answer": f"An error occurred while answering your query: {str(e)}",
             "sources": []
         }
+
+
+# ─────────────────────────────────────────────
+# Meeting-Specific Chatbot Helper
+# ─────────────────────────────────────────────
+
+def chat_with_meeting_helper(transcript: str, question: str, history: list[dict]) -> str:
+    """
+    Generate a chatbot response based on a specific meeting transcript and message history.
+
+    Args:
+        transcript: Full text transcript of the target meeting.
+        question: Latest user message/question.
+        history: Message history list of dicts [{"role": "user"|"assistant", "content": str}]
+
+    Returns:
+        String AI response content.
+    """
+    if not transcript:
+        return "This meeting has no transcript. Cannot answer questions."
+
+    llm = _get_llm()
+
+    messages = [
+        SystemMessage(content=f"""You are a helpful AI meeting assistant.
+You have access to the complete transcript of this specific meeting recording.
+Answer the user's questions truthfully and professionally based ONLY on the transcript context.
+If the transcript does not contain the information requested, state politely: "I couldn't find that mentioned in this meeting."
+
+Meeting Transcript:
+\"\"\"
+{transcript}
+\"\"\"
+""")
+    ]
+
+    # Re-inject conversation history
+    for msg in history:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content))
+
+    # Append current message
+    messages.append(HumanMessage(content=question))
+
+    try:
+        response = llm.invoke(messages)
+        return response.content.strip()
+    except Exception as e:
+        logger.error(f"Meeting chatbot call failed: {e}")
+        return f"An error occurred while generating response: {str(e)}"

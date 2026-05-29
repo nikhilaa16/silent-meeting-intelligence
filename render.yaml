@@ -1,0 +1,39 @@
+services:
+  # ─────────────────────────────────────────────────────────────
+  # FastAPI Backend Service
+  # ─────────────────────────────────────────────────────────────
+  - type: web
+    name: silent-meeting-backend
+    env: docker
+    dockerfilePath: backend.Dockerfile
+    plan: free
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false # User must provide their own Groq API key in the Render dashboard
+      - key: GROQ_LLM_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_WHISPER_MODEL
+        value: whisper-large-v3-turbo
+      - key: API_KEY
+        value: silent-meeting-super-secret-2025 # Or user can customize
+      - key: DB_PATH
+        value: meetings.db
+      - key: UPLOAD_DIR
+        value: uploads
+
+  # ─────────────────────────────────────────────────────────────
+  # Streamlit Frontend Dashboard Service
+  # ─────────────────────────────────────────────────────────────
+  - type: web
+    name: silent-meeting-dashboard
+    env: docker
+    dockerfilePath: dashboard.Dockerfile
+    plan: free
+    envVars:
+      - key: BACKEND_URL
+        fromService:
+          type: web
+          name: silent-meeting-backend
+          property: host
+      - key: API_KEY
+        value: silent-meeting-super-secret-2025

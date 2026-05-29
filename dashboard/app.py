@@ -24,6 +24,97 @@ AUTH_HEADERS = {"X-API-Key": API_KEY}
 POLL_INTERVAL_SECONDS = 3
 MAX_POLL_ATTEMPTS = 120  # 6 minutes max
 
+from fpdf import FPDF
+
+# ─────────────────────────────────────────────
+# PDF Exporter Helper
+# ─────────────────────────────────────────────
+
+class MeetingReportPDF(FPDF):
+    def header(self):
+        # Draw header banner or logo area
+        self.set_font('Helvetica', 'B', 14)
+        self.set_text_color(167, 139, 250) # Light purple theme
+        self.cell(0, 10, 'Silent Meeting Intelligence — Meeting Report', border=0, ln=1, align='L')
+        self.set_draw_color(167, 139, 250)
+        self.set_line_width(0.5)
+        self.line(10, 20, 200, 20)
+        self.ln(10)
+        
+    def footer(self):
+        # Draw footer
+        self.set_y(-15)
+        self.set_font('Helvetica', 'I', 8)
+        self.set_text_color(100, 116, 139)
+        self.cell(0, 10, f'Page {self.page_no()}', border=0, ln=0, align='C')
+
+
+def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_items: list, email_draft: str) -> bytes:
+    pdf = MeetingReportPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Metadata / Title
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(30, 41, 59) # Slate 800
+    pdf.cell(0, 8, f"Meeting File: {filename}", ln=1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(100, 116, 139)
+    pdf.cell(0, 6, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=1)
+    pdf.ln(8)
+    
+    # ── Section: Executive Summary ─────────────────────────────────
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(167, 139, 250)
+    pdf.cell(0, 8, "Executive Summary", ln=1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(51, 65, 85) # Slate 700
+    pdf.multi_cell(0, 6, summary or "No summary available.")
+    pdf.ln(6)
+    
+    # ── Section: Key Decisions ─────────────────────────────────────
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(167, 139, 250)
+    pdf.cell(0, 8, "Key Decisions", ln=1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(51, 65, 85)
+    if decisions:
+        for i, d in enumerate(decisions, 1):
+            pdf.multi_cell(0, 6, f"{i}. {d}")
+    else:
+        pdf.cell(0, 6, "No decisions were finalized.", ln=1)
+    pdf.ln(6)
+    
+    # ── Section: Action Items ──────────────────────────────────────
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(167, 139, 250)
+    pdf.cell(0, 8, "Action Items", ln=1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(51, 65, 85)
+    if action_items:
+        for item in action_items:
+            task = item.get("task", "Unknown Task")
+            owner = item.get("owner", "Unassigned")
+            deadline = item.get("deadline") or "Not set"
+            priority = item.get("priority", "medium").upper()
+            pdf.multi_cell(0, 6, f"- [{priority}] {task} (Owner: {owner}, Due: {deadline})")
+    else:
+        pdf.cell(0, 6, "No action items extracted.", ln=1)
+    pdf.ln(6)
+    
+    # ── Section: Follow-up Email Draft ──────────────────────────────
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(167, 139, 250)
+    pdf.cell(0, 8, "Follow-up Email Draft", ln=1)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(71, 85, 105)
+    if email_draft:
+        pdf.multi_cell(0, 5, email_draft)
+    else:
+        pdf.cell(0, 6, "No email draft generated.", ln=1)
+        
+    return bytes(pdf.output())
+
 st.set_page_config(
     page_title="Silent Meeting Intelligence",
     page_icon="🎙️",
@@ -434,9 +525,22 @@ if meeting_id:
         summary = data.get("summary") or ""
         transcript = data.get("transcript") or ""
         conflicts = data.get("conflicts") or []
+        email_draft = data.get("email_draft") or ""
 
-        # Header
-        st.markdown(f"### 📄 {filename}")
+        # Header & Download Button Row
+        col_h, col_dl = st.columns([3, 1])
+        with col_h:
+            st.markdown(f"### 📄 {filename}")
+        with col_dl:
+            with st.spinner("Preparing PDF..."):
+                pdf_bytes = generate_meeting_pdf(filename, summary, decisions, action_items, email_draft)
+            st.download_button(
+                label="📥 Download Report",
+                data=pdf_bytes,
+                file_name=f"Meeting_Report_{meeting_id[:8]}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
 
         # Stats row — show conflicts count in red if any found
         conflict_color = "#f87171" if conflicts else "#a78bfa"
@@ -462,13 +566,14 @@ if meeting_id:
         """, unsafe_allow_html=True)
 
         # Tabs
-        tab_summary, tab_decisions, tab_actions, tab_questions, tab_conflicts, tab_email, tab_transcript = st.tabs([
+        tab_summary, tab_decisions, tab_actions, tab_questions, tab_conflicts, tab_email, tab_chat, tab_transcript = st.tabs([
             "📋 Summary",
             f"✅ Decisions ({len(decisions)})",
             f"🎯 Action Items ({len(action_items)})",
             f"❓ Open Questions ({len(open_questions)})",
             f"⚠️ Conflicts ({len(conflicts)})" if conflicts else "✅ No Conflicts",
             "📧 Follow-up Email",
+            "💬 Chat with Meeting",
             "📝 Transcript",
         ])
 
@@ -570,10 +675,58 @@ if meeting_id:
             else:
                 st.info("Transcript not available.")
 
+        # ── Tab: Meeting Chatbot ──────────────────────────────────────
+        with tab_chat:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="background:rgba(167,139,250,0.06); border:1px solid rgba(167,139,250,0.15);
+                 border-radius:12px; padding:0.8rem 1.1rem; margin-bottom:1.2rem; color:#cbd5e1; font-size:0.9rem;">
+                💬 Ask questions about this specific meeting transcript. The AI will answer based on what was discussed.
+            </div>
+            """, unsafe_allow_html=True)
+
+            chat_key = f"chat_history_{meeting_id}"
+            if chat_key not in st.session_state:
+                st.session_state[chat_key] = []
+
+            # Display messages
+            for message in st.session_state[chat_key]:
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
+
+            # Input box
+            user_question = st.chat_input("Ask a question about this meeting:", key=f"chat_input_{meeting_id}")
+            if user_question:
+                with st.chat_message("user"):
+                    st.write(user_question)
+
+                with st.spinner("AI is thinking..."):
+                    payload = {
+                        "message": user_question,
+                        "history": st.session_state[chat_key]
+                    }
+                    try:
+                        r = requests.post(
+                            f"{API_URL}/meetings/{meeting_id}/chat",
+                            json=payload,
+                            headers=AUTH_HEADERS,
+                            timeout=30
+                        )
+                        if r.status_code == 200:
+                            response_text = r.json().get("response", "No answer could be generated.")
+                            with st.chat_message("assistant"):
+                                st.write(response_text)
+                            st.session_state[chat_key].append({"role": "user", "content": user_question})
+                            st.session_state[chat_key].append({"role": "assistant", "content": response_text})
+                            st.rerun()
+                        else:
+                            st.error(f"Chat failed: {r.status_code} - {r.text}")
+                    except Exception as err:
+                        st.error(f"Error connecting to chatbot: {err}")
+
         # ── Tab: Follow-up Email ──────────────────────────────────────
         with tab_email:
             st.markdown("<br>", unsafe_allow_html=True)
-            email_draft = data.get("email_draft") or ""
             if email_draft:
                 st.code(email_draft, language="markdown")
                 st.markdown("""

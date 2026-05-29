@@ -281,6 +281,20 @@ class TestAPI:
         assert response.status_code == 200
         assert "answer" in response.json()
 
+    def test_chat_endpoint_requires_auth(self):
+        """Chat endpoint must return 422 if API key is missing."""
+        response = self.client.post("/meetings/meeting-id/chat", json={"message": "hello"})
+        assert response.status_code == 422
+
+    def test_chat_endpoint_returns_404_if_not_found(self):
+        """Chat endpoint must return 404 if meeting doesn't exist."""
+        response = self.client.post(
+            "/meetings/nonexistent-id/chat",
+            json={"message": "hello", "history": []},
+            headers=self.headers
+        )
+        assert response.status_code == 404
+
 
 # ─────────────────────────────────────────────
 # Tests: Semantic RAG Search & Email Agent

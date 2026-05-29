@@ -33,8 +33,8 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_db, init_db
-from .intelligence import analyze_meeting, detect_conflicts, semantic_search_meetings
-from .models import MeetingDB, MeetingListItem, MeetingResult, MeetingUploadResponse
+from .intelligence import analyze_meeting, detect_conflicts, semantic_search_meetings, chat_with_meeting_helper
+from .models import MeetingDB, MeetingListItem, MeetingResult, MeetingUploadResponse, ChatRequest
 from .whisper_service import transcribe_audio
 
 # ─────────────────────────────────────────────
@@ -238,6 +238,34 @@ def get_meeting(
     if not meeting:
         raise HTTPException(status_code=404, detail=f"Meeting '{meeting_id}' not found.")
     return meeting
+
+
+@app.post("/meetings/{meeting_id}/chat")
+def chat_with_meeting(
+    meeting_id: str,
+    request_data: ChatRequest,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Chat with a specific meeting transcript.
+    """
+    meeting = db.query(MeetingDB).filter(MeetingDB.id == meeting_id).first()
+    if not meeting:
+        raise HTTPException(status_code=404, detail=f"Meeting '{meeting_id}' not found.")
+
+    if not meeting.transcript:
+        raise HTTPException(
+            status_code=400,
+            detail="This meeting has no transcript yet. Wait for processing to complete.",
+        )
+
+    response_text = chat_with_meeting_helper(
+        meeting.transcript,
+        request_data.message,
+        request_data.history,
+    )
+    return {"response": response_text}
 
 
 @app.get("/meetings", response_model=list[MeetingListItem])

@@ -91,3 +91,9 @@ class MeetingListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ChatRequest(BaseModel):
+    """Request schema for chatting with a specific meeting transcript."""
+    message: str
+    history: list[dict] = []
