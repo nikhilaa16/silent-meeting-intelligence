@@ -1779,8 +1779,8 @@ def render_meeting_details(meeting_id: str):
 
 
 def render_search_page():
-    st.markdown('<h1 class="main-title">🔍 Semantic Search (RAG)</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Query transcripts semantically across all processed meetings in the database.</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">🔍 Lexical Search (TF-IDF RAG)</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Query transcripts using keyword-matching (TF-IDF) across all processed meetings in the database.</p>', unsafe_allow_html=True)
 
     search_query = st.text_input(
         "Ask anything about past meeting discussions:",
@@ -1792,7 +1792,7 @@ def render_search_page():
         # Clear after read to avoid stickiness across page jumps
         st.session_state.search_query_input = ""
         
-        with st.spinner("Semantic RAG Search traversing transcripts..."):
+        with st.spinner("Lexical RAG Search traversing transcripts..."):
             try:
                 r = requests.get(
                     f"{API_URL}/meetings/search",
