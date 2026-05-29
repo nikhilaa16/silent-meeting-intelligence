@@ -561,8 +561,6 @@ def analyze_meeting(transcript: str) -> dict:
     Returns:
         dict with keys: decisions, action_items, open_questions, summary, email_draft, speakers, error
     """
-    graph = build_intelligence_graph()
-
     # Auto-detect speaker diarization from transcript format
     has_diarization, speakers = _detect_speakers(transcript)
     if has_diarization:
@@ -582,8 +580,31 @@ def analyze_meeting(transcript: str) -> dict:
         "error": None,
     }
 
-    result = graph.invoke(initial_state)
-    return result
+    # Parallelize the 4 independent LLM agents (decisions, action items, open questions, summary)
+    import concurrent.futures
+    logger.info("Running 4 independent extraction agents in parallel...")
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_decisions = executor.submit(extract_decisions, initial_state)
+        future_action_items = executor.submit(extract_action_items, initial_state)
+        future_open_questions = executor.submit(extract_open_questions, initial_state)
+        future_summary = executor.submit(generate_summary, initial_state)
+
+        state_decisions = future_decisions.result()
+        state_action_items = future_action_items.result()
+        state_open_questions = future_open_questions.result()
+        state_summary = future_summary.result()
+
+    # Merge results into a combined state
+    merged_state = initial_state.copy()
+    merged_state["decisions"] = state_decisions.get("decisions", [])
+    merged_state["action_items"] = state_action_items.get("action_items", [])
+    merged_state["open_questions"] = state_open_questions.get("open_questions", [])
+    merged_state["summary"] = state_summary.get("summary", "")
+
+    # Run the dependent agent (email draft) sequentially using the merged state
+    logger.info("Running follow-up email draft generator...")
+    final_state = generate_email_draft(merged_state)
+    return final_state
 
 
 # ─────────────────────────────────────────────
