@@ -195,7 +195,7 @@ def search_meetings(
     _: str = Depends(verify_api_key),
 ):
     """
-    Search past completed meetings using a semantic RAG pipeline.
+    Search past completed meetings using a lexical RAG pipeline (TF-IDF keyword matching + LLM synthesis).
 
     Query example: "What did we decide about the database?"
     """

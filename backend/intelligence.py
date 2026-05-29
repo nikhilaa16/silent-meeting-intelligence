@@ -587,12 +587,12 @@ def analyze_meeting(transcript: str) -> dict:
 
 
 # ─────────────────────────────────────────────
-# Semantic RAG Search (Cross-Meeting QA)
+# Lexical RAG Search (TF-IDF) (Cross-Meeting QA)
 # ─────────────────────────────────────────────
 
 def semantic_search_meetings(query: str, past_meetings: list) -> dict:
     """
-    Perform a Semantic RAG Search across all completed meeting transcripts.
+    Perform a Lexical RAG Search (TF-IDF) across all completed meeting transcripts.
 
     Args:
         query: User search query or question.
