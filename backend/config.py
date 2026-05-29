@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # Authentication
     # Set a strong secret key here. Dashboard will use this to talk to the API.
     # Generate one: python -c "import secrets; print(secrets.token_hex(32))"
-    API_KEY: str = "change-me-to-a-strong-secret-key"
+    API_KEY: str = "silent-meeting-super-secret-2025"
 
     class Config:
         env_file = ".env"
