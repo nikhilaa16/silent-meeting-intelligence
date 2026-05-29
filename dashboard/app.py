@@ -141,8 +141,13 @@ st.markdown("""
 
     /* Sidebar container styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0B1220 0%, #111827 100%) !important;
+        background: linear-gradient(180deg, rgba(11, 18, 32, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%) !important;
         border-right: 1px solid rgba(236, 72, 153, 0.15) !important;
+        backdrop-filter: blur(16px) !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background: transparent !important;
     }
 
     /* Sidebar typography colors */
@@ -151,39 +156,121 @@ st.markdown("""
     section[data-testid="stSidebar"] h3, 
     section[data-testid="stSidebar"] h4, 
     section[data-testid="stSidebar"] h5, 
-    section[data-testid="stSidebar"] h6, 
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] .stMarkdown {
-        color: #F8FAFC !important;
+    section[data-testid="stSidebar"] h6 {
+        color: #F8FAFC !important; /* Text: #F8FAFC */
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 600 !important;
     }
 
-    /* Glassmorphic alerts in sidebar (Backend connected) */
-    section[data-testid="stSidebar"] div[data-testid="stAlert"] {
-        background-color: rgba(52, 211, 153, 0.08) !important;
-        border: 1px solid rgba(52, 211, 153, 0.25) !important;
-        color: #34d399 !important;
-        border-radius: 8px !important;
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] .stMarkdown p,
+    section[data-testid="stSidebar"] .empty-text {
+        color: #94A3B8 !important; /* Secondary text: #94A3B8 */
+        font-family: 'Outfit', sans-serif !important;
     }
-    section[data-testid="stSidebar"] div[data-testid="stAlert"] * {
+
+    /* Sidebar connection status card */
+    .sidebar-status {
+        background-color: rgba(30, 41, 59, 0.75) !important; /* Keep cards slightly lighter: #1E293B */
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        backdrop-filter: blur(8px) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        margin-bottom: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-online {
+        border: 1px solid rgba(52, 211, 153, 0.3) !important;
         color: #34d399 !important;
+    }
+
+    .status-offline {
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        color: #f87171 !important;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .status-flex {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-online .status-indicator {
+        background-color: #34d399;
+        box-shadow: 0 0 8px #34d399;
+        animation: pulse-green 2s infinite;
+    }
+
+    .status-offline .status-indicator {
+        background-color: #f87171;
+        box-shadow: 0 0 8px #f87171;
+        animation: pulse-red 2s infinite;
+    }
+
+    .status-hint {
+        font-size: 0.75rem;
+        color: #94A3B8; /* Secondary text: #94A3B8 */
+        margin-top: 0.25rem;
+        font-family: monospace;
+    }
+
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+    }
+
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
 
     /* Sidebar buttons (Meeting history items & Refresh button) */
     section[data-testid="stSidebar"] button {
-        background-color: rgba(30, 41, 59, 0.6) !important;
-        border: 1px solid rgba(236, 72, 153, 0.2) !important;
-        color: #F8FAFC !important;
-        border-radius: 8px !important;
+        background-color: rgba(30, 41, 59, 0.7) !important; /* Keep cards slightly lighter: #1E293B */
+        border: 1px solid rgba(255, 255, 255, 0.08) !important; /* Soft border */
+        color: #94A3B8 !important; /* Secondary text: #94A3B8 */
+        border-radius: 10px !important;
         font-family: 'Outfit', sans-serif !important;
-        transition: background-color 0.2s, border-color 0.2s, transform 0.1s !important;
+        font-weight: 500 !important;
+        padding: 0.6rem 1rem !important;
+        backdrop-filter: blur(8px) !important; /* Subtle glassmorphism blur */
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
 
     section[data-testid="stSidebar"] button:hover {
-        background-color: rgba(236, 72, 153, 0.15) !important;
-        border-color: rgba(236, 72, 153, 0.5) !important;
-        color: #F8FAFC !important;
-        transform: scale(1.02);
+        background-color: rgba(236, 72, 153, 0.12) !important; /* Accent color: #EC4899 (pink) glow */
+        border-color: rgba(236, 72, 153, 0.5) !important; /* Soft border glowing pink */
+        color: #F8FAFC !important; /* Hover text: #F8FAFC */
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 16px rgba(236, 72, 153, 0.2) !important;
+    }
+
+    /* Highlight style wrapper for selected meeting item */
+    .selected-meeting-box button {
+        background-color: rgba(236, 72, 153, 0.15) !important; /* Pink accent tint */
+        border-color: #EC4899 !important; /* Pink border */
+        color: #F8FAFC !important; /* Primary text */
+        font-weight: 600 !important;
+        box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25) !important;
     }
 
     /* Sidebar dividers */
@@ -456,9 +543,9 @@ with st.sidebar:
     # Check backend connectivity
     health = api_get("/health")
     if health:
-        st.success("✅ Backend connected", icon=None)
+        st.markdown('<div class="sidebar-status status-online"><span class="status-indicator"></span>Backend Connected</div>', unsafe_allow_html=True)
     else:
-        st.error("❌ Backend offline\nRun: `python run_backend.py`")
+        st.markdown('<div class="sidebar-status status-offline"><div class="status-flex"><span class="status-indicator"></span>Backend Offline</div><div class="status-hint">Run: python run_backend.py</div></div>', unsafe_allow_html=True)
 
     st.markdown("### 📋 Meeting History")
 
@@ -475,9 +562,18 @@ with st.sidebar:
             dot = status_dot(m["status"])
             created = m.get("created_at", "")[:16].replace("T", " ") if m.get("created_at") else "—"
             label = f"{dot} {m['filename'][:28]}"
+            
+            # Wrap in selected-meeting-box if it's the currently selected meeting
+            is_selected = m["id"] == st.session_state.selected_meeting_id
+            if is_selected:
+                st.markdown('<div class="selected-meeting-box">', unsafe_allow_html=True)
+                
             if st.button(label, key=f"btn_{m['id']}", use_container_width=True, help=f"Created: {created}"):
                 st.session_state.selected_meeting_id = m["id"]
                 st.rerun()
+                
+            if is_selected:
+                st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
     if st.button("🔄 Refresh History", use_container_width=True):
