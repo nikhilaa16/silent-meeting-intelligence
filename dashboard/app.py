@@ -1035,7 +1035,7 @@ def api_post_file(path: str, file_bytes: bytes, filename: str) -> dict | None:
             f"{API_URL}{path}",
             files={"file": (filename, file_bytes)},
             headers=AUTH_HEADERS,
-            timeout=30,
+            timeout=120,
         )
         r.raise_for_status()
         return r.json()
