@@ -34,9 +34,9 @@ class MeetingReportPDF(FPDF):
     def header(self):
         # Draw header banner or logo area
         self.set_font('Helvetica', 'B', 14)
-        self.set_text_color(167, 139, 250) # Light purple theme
+        self.set_text_color(190, 18, 60) # Deep wine red theme
         self.cell(0, 10, 'Silent Meeting Intelligence — Meeting Report', border=0, ln=1, align='L')
-        self.set_draw_color(167, 139, 250)
+        self.set_draw_color(190, 18, 60)
         self.set_line_width(0.5)
         self.line(10, 20, 200, 20)
         self.ln(10)
@@ -65,7 +65,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Executive Summary ─────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(167, 139, 250)
+    pdf.set_text_color(190, 18, 60)
     pdf.cell(0, 8, "Executive Summary", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85) # Slate 700
@@ -74,7 +74,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Key Decisions ─────────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(167, 139, 250)
+    pdf.set_text_color(190, 18, 60)
     pdf.cell(0, 8, "Key Decisions", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85)
@@ -87,7 +87,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Action Items ──────────────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(167, 139, 250)
+    pdf.set_text_color(190, 18, 60)
     pdf.cell(0, 8, "Action Items", ln=1)
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(51, 65, 85)
@@ -104,7 +104,7 @@ def generate_meeting_pdf(filename: str, summary: str, decisions: list, action_it
     
     # ── Section: Follow-up Email Draft ──────────────────────────────
     pdf.set_font('Helvetica', 'B', 11)
-    pdf.set_text_color(167, 139, 250)
+    pdf.set_text_color(190, 18, 60)
     pdf.cell(0, 8, "Follow-up Email Draft", ln=1)
     pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(71, 85, 105)
@@ -128,22 +128,22 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Outfit', sans-serif;
     }
 
-    /* Dark background */
+    /* Premium wine dark background */
     .stApp {
-        background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+        background: linear-gradient(135deg, #100208 0%, #200410 50%, #100208 100%);
     }
 
-    /* Main title */
+    /* Main title with wine-to-rose gold gradient */
     .main-title {
-        font-size: 2.4rem;
+        font-size: 2.5rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #a78bfa, #60a5fa, #34d399);
+        background: linear-gradient(135deg, #fda4af, #f43f5e, #be123c, #881337);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -156,18 +156,19 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* Cards */
+    /* Cards with transparent wine borders */
     .intel-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(30, 8, 16, 0.25);
+        border: 1px solid rgba(244, 63, 94, 0.12);
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         margin-bottom: 0.8rem;
-        transition: border-color 0.2s ease;
+        transition: border-color 0.2s ease, transform 0.2s ease;
     }
 
     .intel-card:hover {
-        border-color: rgba(167, 139, 250, 0.3);
+        border-color: rgba(244, 63, 94, 0.4);
+        transform: translateY(-2px);
     }
 
     /* Decision card */
@@ -184,8 +185,8 @@ st.markdown("""
 
     /* Action item card */
     .action-card {
-        background: rgba(96, 165, 250, 0.08);
-        border: 1px solid rgba(96, 165, 250, 0.2);
+        background: rgba(244, 63, 94, 0.06);
+        border: 1px solid rgba(244, 63, 94, 0.18);
         border-radius: 12px;
         padding: 1rem 1.2rem;
         margin-bottom: 0.7rem;
@@ -229,13 +230,13 @@ st.markdown("""
     .badge-high   { background: rgba(239,68,68,0.2);   color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
     .badge-medium { background: rgba(251,191,36,0.2);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
     .badge-low    { background: rgba(52,211,153,0.2);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
-    .badge-owner  { background: rgba(167,139,250,0.2); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
-    .badge-due    { background: rgba(96,165,250,0.2);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+    .badge-owner  { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.25); }
+    .badge-due    { background: rgba(251, 113, 133, 0.15); color: #fecdd3; border: 1px solid rgba(251, 113, 133, 0.25); }
 
     /* Summary box */
     .summary-box {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(167,139,250,0.2);
+        background: rgba(30, 8, 16, 0.2);
+        border: 1px solid rgba(244, 63, 94, 0.2);
         border-radius: 16px;
         padding: 1.4rem 1.6rem;
         color: #cbd5e1;
@@ -252,8 +253,8 @@ st.markdown("""
 
     .stat-box {
         flex: 1;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(30, 8, 16, 0.25);
+        border: 1px solid rgba(244, 63, 94, 0.12);
         border-radius: 12px;
         padding: 1rem;
         text-align: center;
@@ -262,7 +263,7 @@ st.markdown("""
     .stat-number {
         font-size: 2rem;
         font-weight: 700;
-        color: #a78bfa;
+        color: #f43f5e;
     }
 
     .stat-label {
@@ -275,17 +276,18 @@ st.markdown("""
 
     /* History item */
     .history-item {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.06);
+        background: rgba(30, 8, 16, 0.15);
+        border: 1px solid rgba(244, 63, 94, 0.08);
         border-radius: 10px;
         padding: 0.7rem 0.9rem;
         margin-bottom: 0.5rem;
         cursor: pointer;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, transform 0.1s;
     }
 
     .history-item:hover {
-        border-color: rgba(167,139,250,0.3);
+        border-color: rgba(244, 63, 94, 0.35);
+        transform: scale(1.02);
     }
 
     /* Status dot */
@@ -304,7 +306,7 @@ st.markdown("""
         line-height: 1.7;
         max-height: 300px;
         overflow-y: auto;
-        font-family: 'Inter', monospace;
+        font-family: 'Outfit', monospace;
         white-space: pre-wrap;
     }
 
@@ -324,9 +326,9 @@ st.markdown("""
     }
 
     .stTabs [aria-selected="true"] {
-        background: rgba(167,139,250,0.15);
-        color: #a78bfa;
-        border-bottom: 2px solid #a78bfa;
+        background: rgba(244, 63, 94, 0.12);
+        color: #f43f5e;
+        border-bottom: 2px solid #f43f5e;
     }
 
     /* Upload area */
@@ -494,7 +496,7 @@ if meeting_id:
                     st.markdown("""
                         <div style="text-align:center; padding: 3rem 0;">
                             <div style="font-size:3rem; margin-bottom:1rem;">⚙️</div>
-                            <div style="color:#a78bfa; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
+                            <div style="color:#f43f5e; font-size:1.1rem; font-weight:600; margin-bottom:0.5rem;">
                                 Processing your meeting...
                             </div>
                             <div style="color:#64748b; font-size:0.9rem;">
@@ -543,7 +545,7 @@ if meeting_id:
             )
 
         # Stats row — show conflicts count in red if any found
-        conflict_color = "#f87171" if conflicts else "#a78bfa"
+        conflict_color = "#f87171" if conflicts else "#f43f5e"
         st.markdown(f"""
         <div class="stat-row">
             <div class="stat-box">
