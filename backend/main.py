@@ -114,6 +114,17 @@ def health_check():
     }
 
 
+@app.get("/debug")
+def debug_check():
+    return {
+        "model": settings.GROQ_LLM_MODEL,
+        "key_prefix": settings.GROQ_API_KEY[:10] if settings.GROQ_API_KEY else "None",
+        "key_length": len(settings.GROQ_API_KEY) if settings.GROQ_API_KEY else 0,
+        "upload_dir": str(settings.UPLOAD_DIR),
+        "db_path": settings.DB_PATH,
+    }
+
+
 @app.post("/meetings/upload", response_model=MeetingUploadResponse, status_code=202)
 async def upload_meeting(
     background_tasks: BackgroundTasks,

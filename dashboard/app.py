@@ -1179,6 +1179,20 @@ with st.sidebar:
     with st.expander("⚙️ System Diagnostics"):
         st.write(f"**API URL**: `{API_URL}`")
         st.write(f"**API Key**: `{'Loaded' if API_KEY else 'Missing'}`")
+        
+        try:
+            r = requests.get(f"{API_URL}/debug", timeout=API_TIMEOUT)
+            if r.status_code == 200:
+                data = r.json()
+                st.success("✅ Connected to backend!")
+                st.write(f"**Groq Model**: `{data.get('model')}`")
+                st.write(f"**Key Prefix**: `{data.get('key_prefix')}...`")
+                st.write(f"**Key Length**: `{data.get('key_length')} characters`")
+                st.write(f"**DB Path**: `{data.get('db_path')}`")
+            else:
+                st.error(f"❌ Backend returned status {r.status_code}")
+        except Exception as e:
+            st.error(f"❌ Backend unreachable: {e}")
 
 
 # Fetch meetings & tasks (cached – fast on every rerun)
