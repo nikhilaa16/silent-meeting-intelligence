@@ -139,6 +139,58 @@ st.markdown("""
         background: linear-gradient(135deg, #100208 0%, #200410 50%, #100208 100%);
     }
 
+    /* Sidebar container styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #120309 0%, #0a0105 100%) !important;
+        border-right: 1px solid rgba(244, 63, 94, 0.15) !important;
+    }
+
+    /* Sidebar typography colors */
+    section[data-testid="stSidebar"] h1, 
+    section[data-testid="stSidebar"] h2, 
+    section[data-testid="stSidebar"] h3, 
+    section[data-testid="stSidebar"] h4, 
+    section[data-testid="stSidebar"] h5, 
+    section[data-testid="stSidebar"] h6, 
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: #f1f5f9 !important;
+    }
+
+    /* Glassmorphic alerts in sidebar (Backend connected) */
+    section[data-testid="stSidebar"] div[data-testid="stAlert"] {
+        background-color: rgba(52, 211, 153, 0.08) !important;
+        border: 1px solid rgba(52, 211, 153, 0.25) !important;
+        color: #34d399 !important;
+        border-radius: 8px !important;
+    }
+    section[data-testid="stSidebar"] div[data-testid="stAlert"] * {
+        color: #34d399 !important;
+    }
+
+    /* Sidebar buttons (Meeting history items & Refresh button) */
+    section[data-testid="stSidebar"] button {
+        background-color: rgba(244, 63, 94, 0.05) !important;
+        border: 1px solid rgba(244, 63, 94, 0.15) !important;
+        color: #fda4af !important;
+        border-radius: 8px !important;
+        font-family: 'Outfit', sans-serif !important;
+        transition: background-color 0.2s, border-color 0.2s, transform 0.1s !important;
+    }
+
+    section[data-testid="stSidebar"] button:hover {
+        background-color: rgba(244, 63, 94, 0.15) !important;
+        border-color: rgba(244, 63, 94, 0.35) !important;
+        color: #fecdd3 !important;
+        transform: scale(1.02);
+    }
+
+    /* Sidebar dividers */
+    section[data-testid="stSidebar"] hr {
+        border-color: rgba(244, 63, 94, 0.15) !important;
+    }
+
     /* Main title with wine-to-rose gold gradient */
     .main-title {
         font-size: 2.5rem;
