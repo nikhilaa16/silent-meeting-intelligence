@@ -345,13 +345,25 @@ st.markdown('<p class="subtitle">Upload any meeting recording. Get decisions, ac
 # ── Upload Section ────────────────────────────────────────────────────────────
 
 with st.container():
-    uploaded_file = st.file_uploader(
-        "Drop your meeting recording here",
-        type=["mp3", "mp4", "wav", "m4a", "ogg", "webm"],
-        help="Supports MP3, MP4, WAV, M4A, OGG, WEBM",
-        label_visibility="visible",
-    )
-    st.markdown('<p class="upload-hint">Supports MP3 · MP4 · WAV · M4A · OGG · WEBM &nbsp;|&nbsp; Max 100 MB</p>', unsafe_allow_html=True)
+    upload_tab, record_tab = st.tabs(["📁 Upload File", "🎤 Record Live Meeting"])
+    uploaded_file = None
+    
+    with upload_tab:
+        uploaded_file = st.file_uploader(
+            "Drop your meeting recording here",
+            type=["mp3", "mp4", "wav", "m4a", "ogg", "webm"],
+            help="Supports MP3, MP4, WAV, M4A, OGG, WEBM",
+            key="file_uploader",
+        )
+        st.markdown('<p class="upload-hint">Supports MP3 · MP4 · WAV · M4A · OGG · WEBM &nbsp;|&nbsp; Max 100 MB</p>', unsafe_allow_html=True)
+        
+    with record_tab:
+        recorded_audio = st.audio_input("Record a brief meeting note or summary directly:")
+        if recorded_audio is not None:
+            uploaded_file = recorded_audio
+            # Ensure it has a valid filename when sent to FastAPI
+            if not hasattr(uploaded_file, "name") or not uploaded_file.name:
+                uploaded_file.name = f"recorded_meeting_{int(time.time())}.wav"
 
 if uploaded_file is not None:
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -450,12 +462,13 @@ if meeting_id:
         """, unsafe_allow_html=True)
 
         # Tabs
-        tab_summary, tab_decisions, tab_actions, tab_questions, tab_conflicts, tab_transcript = st.tabs([
+        tab_summary, tab_decisions, tab_actions, tab_questions, tab_conflicts, tab_email, tab_transcript = st.tabs([
             "📋 Summary",
             f"✅ Decisions ({len(decisions)})",
             f"🎯 Action Items ({len(action_items)})",
             f"❓ Open Questions ({len(open_questions)})",
             f"⚠️ Conflicts ({len(conflicts)})" if conflicts else "✅ No Conflicts",
+            "📧 Follow-up Email",
             "📝 Transcript",
         ])
 
@@ -557,10 +570,59 @@ if meeting_id:
             else:
                 st.info("Transcript not available.")
 
+        # ── Tab: Follow-up Email ──────────────────────────────────────
+        with tab_email:
+            st.markdown("<br>", unsafe_allow_html=True)
+            email_draft = data.get("email_draft") or ""
+            if email_draft:
+                st.code(email_draft, language="markdown")
+                st.markdown("""
+                <small style='color:#64748b'>
+                    💡 You can copy the raw markdown email above and send it directly to your client or team.
+                </small>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("No email draft generated for this meeting.")
+
         break  # Exit polling loop — we have results
 
 else:
-    # No meeting selected — show welcome screen
+    # No meeting selected — show welcome screen and RAG search
+    st.markdown("### 🔍 Search Past Meetings (Semantic RAG)")
+    search_query = st.text_input(
+        "Ask a question about any past meeting:",
+        placeholder="e.g. 'What did we decide about the database?' or 'Who owns the setup tasks?'",
+    )
+    if search_query:
+        with st.spinner("Searching transcripts..."):
+            try:
+                r = requests.get(
+                    f"{API_URL}/meetings/search",
+                    params={"query": search_query},
+                    headers=AUTH_HEADERS,
+                    timeout=20,
+                )
+                if r.status_code == 200:
+                    result = r.json()
+                    answer = result.get("answer", "No answer could be generated.")
+                    sources = result.get("sources") or []
+
+                    st.markdown("#### 🤖 Answer")
+                    st.info(answer)
+
+                    if sources:
+                        with st.expander("📄 Citations & Context"):
+                            for idx, src in enumerate(sources, 1):
+                                st.markdown(f"**Source #{idx} — Meeting: {src['filename']} ({src['date']})**")
+                                st.markdown(f"*{src['snippet']}*")
+                                st.markdown("---")
+                else:
+                    st.error(f"Search failed: {r.status_code} - {r.text}")
+            except Exception as err:
+                st.error(f"Error querying search endpoint: {err}")
+
+    st.markdown("---")
+    
     if not meetings:
         st.markdown("""
         <div style="text-align:center; padding: 4rem 2rem;">

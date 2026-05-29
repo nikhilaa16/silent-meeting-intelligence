@@ -212,6 +212,8 @@ class TestAPI:
         """Set up test client before each test."""
         from fastapi.testclient import TestClient
         from backend.main import app
+        from backend.database import init_db
+        init_db()  # Re-create database and tables with new schema if missing
         self.client = TestClient(app)
         self.headers = {"X-API-Key": "silent-meeting-super-secret-2025"}
 
@@ -262,3 +264,76 @@ class TestAPI:
             headers=self.headers,
         )
         assert response.status_code == 404
+
+    def test_search_endpoint_requires_auth(self):
+        """Search endpoint must return 422 if API key is missing."""
+        response = self.client.get("/meetings/search?query=test")
+        assert response.status_code == 422
+
+    def test_search_endpoint_rejects_wrong_key(self):
+        """Search endpoint must return 401 on incorrect API key."""
+        response = self.client.get("/meetings/search?query=test", headers={"X-API-Key": "wrong"})
+        assert response.status_code == 401
+
+    def test_search_endpoint_returns_json(self):
+        """Search endpoint must return 200 and search response when authenticated."""
+        response = self.client.get("/meetings/search?query=database", headers=self.headers)
+        assert response.status_code == 200
+        assert "answer" in response.json()
+
+
+# ─────────────────────────────────────────────
+# Tests: Semantic RAG Search & Email Agent
+# ─────────────────────────────────────────────
+
+class TestSemanticSearchAndEmailAgent:
+    """Tests for RAG retrieval logic and the follow-up email agent."""
+
+    def test_search_returns_empty_response_on_empty_db(self):
+        """RAG search should state there are no meetings when DB is empty."""
+        from backend.intelligence import semantic_search_meetings
+        result = semantic_search_meetings("what about budget?", [])
+        assert "no past meetings" in result["answer"].lower()
+        assert result["sources"] == []
+
+    def test_search_retrieves_matching_paragraph(self):
+        """RAG search should score and select relevant snippets based on keywords."""
+        from backend.intelligence import semantic_search_meetings
+        meetings = [
+            {
+                "id": "1",
+                "filename": "meeting1.mp3",
+                "created_at": "2025-01-01",
+                "transcript": "We decided to allocate fifty thousand dollars for marketing next quarter."
+            },
+            {
+                "id": "2",
+                "filename": "meeting2.mp3",
+                "created_at": "2025-01-02",
+                "transcript": "John is going to deploy the API server using Docker on Friday morning."
+            }
+        ]
+
+        with patch("backend.intelligence._get_llm") as mock_get_llm:
+            mock_llm = MagicMock()
+            mock_llm.invoke.return_value.content = "Answer: Marketing budget is fifty thousand dollars."
+            mock_get_llm.return_value = mock_llm
+
+            result = semantic_search_meetings("marketing budget", meetings)
+
+            assert "fifty thousand dollars" in result["answer"]
+            assert len(result["sources"]) > 0
+            assert result["sources"][0]["filename"] == "meeting1.mp3"
+
+    @patch("backend.intelligence._get_llm")
+    def test_pipeline_includes_email_draft(self, mock_get_llm):
+        """The 5-agent pipeline must include an email_draft in its output."""
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value.content = 'Subject: Follow-up email draft\nHi Team...'
+        mock_get_llm.return_value = mock_llm
+
+        from backend.intelligence import analyze_meeting
+        result = analyze_meeting("Today we decided to migrate our DB to Postgres.")
+
+        assert "email_draft" in result
+        assert result["email_draft"] is not None

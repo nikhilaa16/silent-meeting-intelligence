@@ -56,6 +56,7 @@ class MeetingState(TypedDict):
     action_items: list[dict]
     open_questions: list[str]
     summary: str
+    email_draft: str
     error: Optional[str]
 
 
@@ -314,6 +315,56 @@ Write ONLY the summary paragraph. Professional tone. No bullet points. No headin
 
 
 # ─────────────────────────────────────────────
+# Node 5: Generate Follow-up Email Draft
+# ─────────────────────────────────────────────
+
+def generate_email_draft(state: MeetingState) -> MeetingState:
+    """
+    Drafts a professional, friendly client follow-up email
+    based on the extracted decisions, summary, and action items.
+    """
+    llm = _get_llm()
+
+    decisions_text = "\n".join(f"• {d}" for d in state["decisions"]) or "None"
+    action_items_text = "\n".join(
+        f"• [{item.get('owner', 'Unassigned')}] {item.get('task', '')} "
+        f"(Due: {item.get('deadline', 'Not set')})"
+        for item in state["action_items"]
+    ) or "None"
+    questions_text = "\n".join(f"• {q}" for q in state["open_questions"]) or "None"
+
+    prompt = f"""You are an expert executive assistant.
+
+Write a professional follow-up email to send to the client or team after this meeting.
+
+The email must include:
+1. A polite, warm opening thank-you note.
+2. A brief, 2-sentence summary of the meeting.
+3. A list of key decisions made.
+4. A clear table or list of action items with who owns them and when they are due.
+5. Open questions that need follow-up (if any).
+6. A warm, professional sign-off.
+
+Use this context:
+SUMMARY: {state['summary']}
+DECISIONS:
+{decisions_text}
+ACTION ITEMS:
+{action_items_text}
+OPEN QUESTIONS:
+{questions_text}
+
+Write ONLY the complete email text (including Subject line at the very top: "Subject: ..."). Do not add any extra explanations or wrapping markdown text outside the email format."""
+
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {**state, "email_draft": response.content.strip()}
+    except Exception as e:
+        logger.error(f"Email drafting failed: {e}")
+        return {**state, "email_draft": "Email draft generation failed.", "error": str(e)}
+
+
+# ─────────────────────────────────────────────
 # Graph Builder
 # ─────────────────────────────────────────────
 
@@ -322,7 +373,7 @@ def build_intelligence_graph():
     Construct and compile the LangGraph pipeline.
 
     Graph structure:
-        extract_decisions → extract_action_items → extract_open_questions → generate_summary → END
+        extract_decisions → extract_action_items → extract_open_questions → generate_summary → generate_email → END
     """
     graph = StateGraph(MeetingState)
 
@@ -331,13 +382,15 @@ def build_intelligence_graph():
     graph.add_node("extract_action_items", extract_action_items)
     graph.add_node("extract_open_questions", extract_open_questions)
     graph.add_node("generate_summary", generate_summary)
+    graph.add_node("generate_email", generate_email_draft)
 
     # Define the sequential flow
     graph.set_entry_point("extract_decisions")
     graph.add_edge("extract_decisions", "extract_action_items")
     graph.add_edge("extract_action_items", "extract_open_questions")
     graph.add_edge("extract_open_questions", "generate_summary")
-    graph.add_edge("generate_summary", END)
+    graph.add_edge("generate_summary", "generate_email")
+    graph.add_edge("generate_email", END)
 
     return graph.compile()
 
@@ -431,13 +484,13 @@ Return ONLY the JSON. No explanation, no markdown."""
 
 def analyze_meeting(transcript: str) -> dict:
     """
-    Run the full 4-agent intelligence pipeline on a meeting transcript.
+    Run the full 5-agent intelligence pipeline on a meeting transcript.
 
     Args:
         transcript: Raw text transcript of the meeting.
 
     Returns:
-        dict with keys: decisions, action_items, open_questions, summary, error
+        dict with keys: decisions, action_items, open_questions, summary, email_draft, error
     """
     graph = build_intelligence_graph()
 
@@ -447,8 +500,133 @@ def analyze_meeting(transcript: str) -> dict:
         "action_items": [],
         "open_questions": [],
         "summary": "",
+        "email_draft": "",
         "error": None,
     }
 
     result = graph.invoke(initial_state)
     return result
+
+
+# ─────────────────────────────────────────────
+# Semantic RAG Search (Cross-Meeting QA)
+# ─────────────────────────────────────────────
+
+def semantic_search_meetings(query: str, past_meetings: list) -> dict:
+    """
+    Perform a Semantic RAG Search across all completed meeting transcripts.
+
+    Args:
+        query: User search query or question.
+        past_meetings: List of database records with filename, created_at, transcript, summary.
+
+    Returns:
+        dict containing:
+            - answer: Synthesized answer to the query with citations.
+            - sources: List of source chunks/meetings found.
+    """
+    if not past_meetings or not query.strip():
+        return {
+            "answer": "No past meetings available to search.",
+            "sources": []
+        }
+
+    # 1. Chunk all transcripts into paragraphs
+    import re
+    import math
+    chunks = []
+    for meeting in past_meetings:
+        # Check if meeting has a transcript (could be direct model dict or DB object)
+        transcript = getattr(meeting, "transcript", None) or meeting.get("transcript")
+        if not transcript:
+            continue
+        
+        filename = getattr(meeting, "filename", None) or meeting.get("filename") or "Unknown"
+        created_at = getattr(meeting, "created_at", None) or meeting.get("created_at")
+        meeting_id = getattr(meeting, "id", None) or meeting.get("id")
+
+        paragraphs = [p.strip() for p in re.split(r'\n\s*\n', transcript) if len(p.strip()) > 30]
+        for idx, para in enumerate(paragraphs):
+            chunks.append({
+                "meeting_id": meeting_id,
+                "filename": filename,
+                "date": str(created_at)[:10] if created_at else "Unknown",
+                "paragraph_idx": idx,
+                "text": para
+            })
+
+    if not chunks:
+        return {
+            "answer": "No searchable text chunks found in past meetings.",
+            "sources": []
+        }
+
+    # 2. Score chunks using simple Python-only TF-IDF/keyword ranking
+    terms = [t.lower() for t in re.findall(r'\w+', query) if len(t) > 2]
+    if not terms:
+        top_chunks = chunks[:5]
+    else:
+        scored_chunks = []
+        for chunk in chunks:
+            score = 0
+            text_lower = chunk["text"].lower()
+            for term in terms:
+                count = text_lower.count(term)
+                if count > 0:
+                    tf = 1 + math.log(count)
+                    score += tf
+            if score > 0:
+                scored_chunks.append((score, chunk))
+        
+        scored_chunks.sort(key=lambda x: x[0], reverse=True)
+        top_chunks = [item[1] for item in scored_chunks[:5]]
+
+    if not top_chunks:
+        return {
+            "answer": f"No relevant information found matching your query: '{query}'.",
+            "sources": []
+        }
+
+    # 3. Call LLaMA to synthesize the final answer from retrieved chunks
+    llm = _get_llm()
+
+    context_str = "\n\n".join(
+        f"[Source #{i+1} | Meeting: {chunk['filename']} | Date: {chunk['date']}]\nSnippet: \"{chunk['text']}\""
+        for i, chunk in enumerate(top_chunks)
+    )
+
+    prompt = f"""You are a helpful AI assistant. You have access to snippets of transcripts from previous business meetings.
+
+Use the provided meeting snippets to answer the user's question.
+
+Rules:
+1. Provide a direct, comprehensive, and professional answer.
+2. You must cite your sources inline using [Source #X] or referencing the meeting name/date.
+3. Base your answer strictly on the snippets provided. If the snippets do not contain enough information, state that clearly.
+
+USER QUESTION: "{query}"
+
+MEETING SNIPPETS:
+{context_str}
+
+Return ONLY the final synthesized answer with proper citations. Do not write any wrapping JSON or XML. Just clean markdown prose."""
+
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return {
+            "answer": response.content.strip(),
+            "sources": [
+                {
+                    "filename": c["filename"],
+                    "date": c["date"],
+                    "snippet": c["text"]
+                }
+                for c in top_chunks
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Semantic search failed: {e}")
+        return {
+            "answer": f"An error occurred while answering your query: {str(e)}",
+            "sources": []
+        }

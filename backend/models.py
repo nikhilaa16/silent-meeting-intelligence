@@ -34,6 +34,7 @@ class MeetingDB(Base):
     open_questions = Column(JSON, nullable=True)  # list[str]
     summary = Column(Text, nullable=True)
     conflicts = Column(JSON, nullable=True)       # list[dict] — cross-meeting conflicts
+    email_draft = Column(Text, nullable=True)     # Follow-up email draft
 
     # Error message if processing failed
     error_message = Column(Text, nullable=True)
@@ -72,6 +73,7 @@ class MeetingResult(BaseModel):
     action_items: Optional[list[dict]] = None
     open_questions: Optional[list[str]] = None
     conflicts: Optional[list[dict]] = None
+    email_draft: Optional[str] = None
     error_message: Optional[str] = None
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

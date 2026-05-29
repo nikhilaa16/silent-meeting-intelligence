@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .database import get_db, init_db
-from .intelligence import analyze_meeting, detect_conflicts
+from .intelligence import analyze_meeting, detect_conflicts, semantic_search_meetings
 from .models import MeetingDB, MeetingListItem, MeetingResult, MeetingUploadResponse
 from .whisper_service import transcribe_audio
 
@@ -188,6 +188,38 @@ async def upload_meeting(
     )
 
 
+@app.get("/meetings/search")
+def search_meetings(
+    query: str,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Search past completed meetings using a semantic RAG pipeline.
+
+    Query example: "What did we decide about the database?"
+    """
+    completed_meetings = (
+        db.query(MeetingDB)
+        .filter(
+            MeetingDB.status == "completed",
+            MeetingDB.transcript.isnot(None),
+        )
+        .all()
+    )
+
+    meetings_data = []
+    for m in completed_meetings:
+        meetings_data.append({
+            "id": m.id,
+            "filename": m.filename,
+            "transcript": m.transcript,
+            "created_at": m.created_at
+        })
+
+    return semantic_search_meetings(query, meetings_data)
+
+
 @app.get("/meetings/{meeting_id}", response_model=MeetingResult)
 def get_meeting(
     meeting_id: str,
@@ -333,6 +365,7 @@ def _process_meeting_background(meeting_id: str, file_path: str) -> None:
             open_questions=result.get("open_questions", []),
             summary=result.get("summary", ""),
             conflicts=conflicts,
+            email_draft=result.get("email_draft", ""),
             completed_at=datetime.utcnow(),
         )
 
