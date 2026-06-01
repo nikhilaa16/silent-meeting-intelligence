@@ -15,7 +15,7 @@ import sys
 def install_gtts():
     """Install gTTS if not already available."""
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "gtts", "-q"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "gtts", "--user", "-q"])
 
 
 def generate_demo_audio():
