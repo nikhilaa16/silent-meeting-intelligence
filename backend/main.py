@@ -36,6 +36,10 @@ from .database import get_db, init_db
 from .intelligence import analyze_meeting, detect_conflicts, semantic_search_meetings, chat_with_meeting_helper
 from .models import MeetingDB, MeetingListItem, MeetingResult, MeetingUploadResponse, ChatRequest
 from .whisper_service import transcribe_audio
+from .auth import (
+    UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse,
+    register_user, login_user, get_current_user, require_admin, UserDB
+)
 
 # ─────────────────────────────────────────────
 # App Setup
@@ -72,6 +76,40 @@ def on_startup() -> None:
     logger.info("Database initialized")
     logger.info(f"Upload directory: {settings.UPLOAD_DIR.absolute()}")
     logger.info("Silent Meeting Intelligence is running!")
+
+
+# ─────────────────────────────────────────────
+# Auth Endpoints (JWT)
+# ─────────────────────────────────────────────
+
+@app.post("/auth/register", response_model=UserResponse, status_code=201)
+def register(
+    request: UserRegisterRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Register a new user account.
+    Roles: "admin" (full access) or "viewer" (read-only).
+    """
+    return register_user(request, db)
+
+
+@app.post("/auth/login", response_model=TokenResponse)
+def login(
+    request: UserLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Login with email + password. Returns a JWT access token.
+    Use the token as: Authorization: Bearer <token>
+    """
+    return login_user(request, db)
+
+
+@app.get("/auth/me", response_model=UserResponse)
+def get_me(current_user: UserDB = Depends(get_current_user)):
+    """Get the currently authenticated user's profile."""
+    return current_user
 
 
 # ─────────────────────────────────────────────
@@ -129,19 +167,20 @@ def debug_check():
 async def upload_meeting(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="Audio or video file of the meeting"),
+    language: str = None,
     db: Session = Depends(get_db),
     _: str = Depends(verify_api_key),
 ):
     """
     Upload a meeting recording. Processing starts immediately in the background.
 
+    Multi-Language Support:
+      Pass ?language=hi for Hindi, ?language=ta for Tamil, ?language=fr for French.
+      Leave blank for automatic language detection (recommended).
+      Supported ISO 639-1 codes: en, hi, ta, te, kn, ml, fr, de, es, ja, zh, ar, pt, ru
+
     Supported formats: MP3, MP4, WAV, M4A, OGG, WEBM
     Returns meeting_id immediately. Poll GET /meetings/{meeting_id} for results.
-
-    Error cases handled:
-    - Unsupported file format → 400
-    - File exceeds size limit → 400
-    - Disk write failure     → 500
     """
     # ── Validate file format ────────────────────────────────────────────
     ALLOWED_EXTENSIONS = {".mp3", ".mp4", ".wav", ".m4a", ".ogg", ".webm", ".mpeg"}
@@ -190,7 +229,7 @@ async def upload_meeting(
     db.refresh(meeting)
 
     # ── Kick off background processing ─────────────────────────────────
-    background_tasks.add_task(_process_meeting_background, meeting_id, str(saved_path))
+    background_tasks.add_task(_process_meeting_background, meeting_id, str(saved_path), language)
 
     return MeetingUploadResponse(
         meeting_id=meeting_id,
@@ -377,22 +416,22 @@ def delete_meeting(
 # Background Processing Task
 # ─────────────────────────────────────────────
 
-def _process_meeting_background(meeting_id: str, file_path: str) -> None:
+def _process_meeting_background(meeting_id: str, file_path: str, language: str = None) -> None:
     """
     Full processing pipeline — runs after the upload response is sent.
 
-    Steps:
-    1. Transcribe audio with Groq Whisper API
-    2. Validate transcript is not empty
-    3. Run LangGraph 4-agent intelligence pipeline
-    4. Run cross-meeting conflict detection against past decisions
-    5. Persist all results to SQLite
+    Args:
+        meeting_id: Unique UUID for this meeting.
+        file_path:  Absolute path to the uploaded audio file.
+        language:   Optional ISO 639-1 language code for transcription.
+                    Pass None or "auto" for automatic language detection.
 
-    Error handling:
-    - Empty transcript (silent audio) → fails with clear message
-    - Groq API error                  → fails with API error message
-    - LangGraph failure               → fails gracefully, saves partial results
-    - DB write failure                → logs error, best effort save
+    Steps:
+    1. Transcribe audio with Groq Whisper API (with optional language param)
+    2. Validate transcript is not empty
+    3. Run LangGraph 5-agent intelligence pipeline
+    4. Run cross-meeting conflict detection against past decisions
+    5. Persist all results to SQLite / PostgreSQL
     """
     db = next(get_db())
 
@@ -410,8 +449,8 @@ def _process_meeting_background(meeting_id: str, file_path: str) -> None:
 
     try:
         # ── Step 1: Transcription ───────────────────────────────────────
-        logger.info(f"[{meeting_id}] Starting transcription...")
-        transcript = transcribe_audio(file_path)
+        logger.info(f"[{meeting_id}] Starting transcription | language: {language or 'auto'}...")
+        transcript = transcribe_audio(file_path, language=language)
 
         # ── Step 2: Validate transcript ─────────────────────────────────
         if not transcript or len(transcript.strip()) < 10:

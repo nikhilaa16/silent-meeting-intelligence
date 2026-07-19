@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ASSEMBLYAI_API_KEY: str = ""
 
     # Model names
-    GROQ_LLM_MODEL: str = "llama-3.1-8b-instant"
+    GROQ_LLM_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_WHISPER_MODEL: str = "whisper-large-v3-turbo"
 
     # Storage
@@ -25,9 +25,25 @@ class Settings(BaseSettings):
     DB_PATH: str = "meetings.db"
     MAX_FILE_SIZE_MB: int = 100
 
-    # Authentication
-    # Set a strong secret key here. Dashboard will use this to talk to the API.
-    # Generate one: python -c "import secrets; print(secrets.token_hex(32))"
+    # ── Database ─────────────────────────────────────────────────────────
+    # Set DATABASE_URL to switch to PostgreSQL for production:
+    #   postgresql+psycopg2://user:password@host:5432/dbname
+    # Leave blank to use SQLite (default for local dev/demo).
+    DATABASE_URL: str = ""
+
+    # ── Multi-Language Support ────────────────────────────────────────────
+    # Default transcription language.
+    # "auto" lets Whisper auto-detect. Or use ISO codes: en, hi, ta, fr, de, es, ja, zh, ar
+    DEFAULT_LANGUAGE: str = "auto"
+
+    # ── JWT Authentication ────────────────────────────────────────────────
+    # Secret key for signing JWT tokens. Generate with:
+    #   python -c "import secrets; print(secrets.token_hex(32))"
+    JWT_SECRET_KEY: str = "silent-meeting-jwt-super-secret-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # Legacy API Key (kept for backward compat with Streamlit dashboard)
     API_KEY: str = "silent-meeting-super-secret-2025"
 
     class Config:
