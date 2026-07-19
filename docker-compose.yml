@@ -1,23 +1,61 @@
 version: '3.8'
 
+# ══════════════════════════════════════════════════════════
+# Silent Meeting Intelligence — Docker Compose
+# ══════════════════════════════════════════════════════════
+#
+# Services:
+#   backend   → FastAPI server  (port 8001)
+#   dashboard → Streamlit UI    (port 8501)
+#   postgres  → PostgreSQL DB   (port 5432) — production mode
+#
+# Profiles:
+#   Default (SQLite):     docker-compose up
+#   Production (Postgres): docker-compose --profile postgres up
+#
+# Quick Start:
+#   1. Copy .env.example to .env and fill in GROQ_API_KEY
+#   2. docker-compose up --build
+
 services:
+
+  # ── FastAPI Backend ────────────────────────────────────────
   backend:
     build:
       context: .
       dockerfile: backend.Dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
-      - GROQ_LLM_MODEL=${GROQ_LLM_MODEL}
-      - GROQ_WHISPER_MODEL=${GROQ_WHISPER_MODEL}
-      - API_KEY=${API_KEY}
+      - ASSEMBLYAI_API_KEY=${ASSEMBLYAI_API_KEY:-}
+      - GROQ_LLM_MODEL=${GROQ_LLM_MODEL:-llama-3.3-70b-versatile}
+      - GROQ_WHISPER_MODEL=${GROQ_WHISPER_MODEL:-whisper-large-v3-turbo}
+      - API_KEY=${API_KEY:-silent-meeting-super-secret-2025}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-1440}
+      - DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-auto}
+      # SQLite (default): leave DATABASE_URL blank
+      # PostgreSQL: set DATABASE_URL=postgresql+psycopg2://smi:secret@postgres:5432/meetings_db
+      - DATABASE_URL=${DATABASE_URL:-}
       - DB_PATH=/app/data/meetings.db
       - UPLOAD_DIR=/app/data/uploads
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-100}
     volumes:
       - app-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false   # only required when postgres profile is active
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # ── Streamlit Dashboard ────────────────────────────────────
   dashboard:
     build:
       context: .
@@ -25,11 +63,32 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - BACKEND_URL=http://backend:8000
-      - API_KEY=${API_KEY}
+      - BACKEND_URL=http://backend:8001
+      - API_KEY=${API_KEY:-silent-meeting-super-secret-2025}
     depends_on:
       - backend
     restart: unless-stopped
 
+  # ── PostgreSQL Database (Production Mode) ─────────────────
+  # Start with: docker-compose --profile postgres up
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: smi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smi_secret_2025}
+      POSTGRES_DB: meetings_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smi -d meetings_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   app-data:
+  postgres-data:

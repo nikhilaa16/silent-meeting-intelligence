@@ -24,6 +24,107 @@ POLL_INTERVAL_SECONDS = 3
 MAX_POLL_ATTEMPTS = 40
 API_TIMEOUT = 3  # seconds – keep UI snappy
 
+
+# ─────────────────────────────────────────────
+# JWT Auth Helpers
+# ─────────────────────────────────────────────
+
+def jwt_login(email: str, password: str) -> dict | None:
+    """Call POST /auth/login, return token data or None on failure."""
+    try:
+        r = requests.post(
+            f"{API_URL}/auth/login",
+            json={"email": email, "password": password},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except Exception:
+        return None
+
+
+def jwt_register(email: str, full_name: str, password: str, role: str = "viewer") -> dict | None:
+    """Call POST /auth/register, return user data or None on failure."""
+    try:
+        r = requests.post(
+            f"{API_URL}/auth/register",
+            json={"email": email, "full_name": full_name, "password": password, "role": role},
+            timeout=8,
+        )
+        if r.status_code == 201:
+            return r.json()
+        return None
+    except Exception:
+        return None
+
+
+def get_jwt_headers() -> dict:
+    """Return auth headers — JWT Bearer if logged in, else legacy API key."""
+    token = st.session_state.get("jwt_token")
+    if token:
+        return {"Authorization": f"Bearer {token}", "X-API-Key": API_KEY}
+    return AUTH_HEADERS
+
+
+def render_login_page():
+    """Render the JWT login / register page."""
+    st.markdown("""
+    <div style="max-width:420px; margin:4rem auto; padding:2.5rem;
+                background:rgba(22,22,36,0.8); border-radius:16px;
+                border:1px solid rgba(255,107,157,0.2);
+                box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <div style="text-align:center; margin-bottom:2rem;">
+            <div style="font-size:2.5rem;">🎙️</div>
+            <h2 style="color:#FFFFFF; font-weight:700; margin:0.5rem 0 0.2rem;">Silent Meeting Intel</h2>
+            <p style="color:#94A3B8; font-size:0.9rem; margin:0;">Sign in to your workspace</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    tab_login, tab_register = st.tabs(["🔑 Sign In", "✨ Register"])
+
+    with tab_login:
+        with st.form("login_form"):
+            email = st.text_input("Email", placeholder="you@company.com")
+            password = st.text_input("Password", type="password", placeholder="Your password")
+            submit = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+
+            if submit:
+                if not email or not password:
+                    st.error("Please enter your email and password.")
+                else:
+                    with st.spinner("Authenticating..."):
+                        data = jwt_login(email, password)
+                    if data:
+                        st.session_state.jwt_token = data["access_token"]
+                        st.session_state.jwt_user_email = data["email"]
+                        st.session_state.jwt_user_role = data["role"]
+                        st.session_state.is_authenticated = True
+                        st.success(f"Welcome back, {data['email']}!")
+                        st.rerun()
+                    else:
+                        st.error("Invalid email or password. Please try again.")
+
+    with tab_register:
+        with st.form("register_form"):
+            reg_name = st.text_input("Full Name", placeholder="Nikhila Narina")
+            reg_email = st.text_input("Email", placeholder="you@company.com", key="reg_email")
+            reg_password = st.text_input("Password", type="password", key="reg_pass")
+            reg_role = st.selectbox("Role", ["viewer", "admin"])
+            reg_submit = st.form_submit_button("Create Account", use_container_width=True, type="primary")
+
+            if reg_submit:
+                if not reg_name or not reg_email or not reg_password:
+                    st.error("Please fill in all fields.")
+                else:
+                    with st.spinner("Creating account..."):
+                        user = jwt_register(reg_email, reg_name, reg_password, reg_role)
+                    if user:
+                        st.success(f"Account created! Please sign in as {reg_email}.")
+                    else:
+                        st.error("Registration failed. Email may already be in use.")
+
 # ─────────────────────────────────────────────
 # PDF Exporter Helper (Styled with Luxury Wine theme)
 # ─────────────────────────────────────────────
@@ -1096,11 +1197,27 @@ def status_dot(status: str) -> str:
 st.session_state.setdefault("current_page", "Dashboard")
 st.session_state.setdefault("selected_meeting_id", None)
 st.session_state.setdefault("search_query_input", "")
+st.session_state.setdefault("is_authenticated", False)
+st.session_state.setdefault("jwt_token", None)
+st.session_state.setdefault("jwt_user_email", None)
+st.session_state.setdefault("jwt_user_role", None)
 
 with st.sidebar:
     st.markdown("### 🎙️ Silent Meeting Intel")
     st.markdown("<small style='color:#FF8FAB'>AI Meeting Workspace</small>", unsafe_allow_html=True)
     st.markdown("---")
+
+    # Show logged-in user info if authenticated
+    if st.session_state.get("is_authenticated") and st.session_state.get("jwt_user_email"):
+        role_badge = "🔴 Admin" if st.session_state.jwt_user_role == "admin" else "🔵 Viewer"
+        st.markdown(f"""
+        <div style='background:rgba(255,107,157,0.08); border:1px solid rgba(255,107,157,0.2);
+                    border-radius:8px; padding:0.6rem 0.8rem; margin-bottom:0.8rem;'>
+            <div style='color:#FF8FAB; font-size:0.75rem; font-weight:600;'>SIGNED IN AS</div>
+            <div style='color:#FFFFFF; font-size:0.85rem; font-weight:500; margin-top:0.2rem;'>{st.session_state.jwt_user_email}</div>
+            <div style='color:#94A3B8; font-size:0.75rem; margin-top:0.1rem;'>{role_badge}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # Render Pages
     pages = [
@@ -1126,6 +1243,21 @@ with st.sidebar:
             
         if is_active:
             st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Login/Logout button
+    if st.session_state.get("is_authenticated"):
+        if st.button("🚪 Sign Out", use_container_width=True):
+            st.session_state.is_authenticated = False
+            st.session_state.jwt_token = None
+            st.session_state.jwt_user_email = None
+            st.session_state.jwt_user_role = None
+            st.rerun()
+    else:
+        if st.button("🔑 Sign In with JWT", use_container_width=True, type="primary"):
+            st.session_state.current_page = "Login"
+            st.rerun()
 
     st.markdown("---")
     
@@ -1487,7 +1619,7 @@ def render_upload_page():
     with st.container():
         upload_tab, record_tab = st.tabs(["📁 Upload Audio File", "🎤 Record Live Note"])
         uploaded_file = None
-        
+
         with upload_tab:
             uploaded_file = st.file_uploader(
                 "Drop your recording file here",
@@ -1496,20 +1628,65 @@ def render_upload_page():
                 key="uploader",
             )
             st.markdown('<p class="upload-hint">Supports MP3 · MP4 · WAV · M4A · OGG · WEBM</p>', unsafe_allow_html=True)
-            
+
+            # ── Multi-Language Support ─────────────────────────────────────
+            LANGUAGE_OPTIONS = {
+                "🌐 Auto-Detect (Recommended)": "auto",
+                "🇬🇧 English": "en",
+                "🇮🇳 Hindi": "hi",
+                "🇮🇳 Tamil": "ta",
+                "🇮🇳 Telugu": "te",
+                "🇮🇳 Kannada": "kn",
+                "🇮🇳 Malayalam": "ml",
+                "🇫🇷 French": "fr",
+                "🇩🇪 German": "de",
+                "🇪🇸 Spanish": "es",
+                "🇯🇵 Japanese": "ja",
+                "🇨🇳 Chinese": "zh",
+                "🇸🇦 Arabic": "ar",
+                "🇵🇹 Portuguese": "pt",
+                "🇷🇺 Russian": "ru",
+            }
+            selected_lang_label = st.selectbox(
+                "🌍 Transcription Language",
+                options=list(LANGUAGE_OPTIONS.keys()),
+                index=0,
+                help="Select the spoken language of the meeting. Auto-Detect works for most cases.",
+            )
+            selected_lang_code = LANGUAGE_OPTIONS[selected_lang_label]
+
         with record_tab:
             recorded_audio = st.audio_input("Record audio clip directly:")
             if recorded_audio is not None:
                 uploaded_file = recorded_audio
                 if not hasattr(uploaded_file, "name") or not uploaded_file.name:
                     uploaded_file.name = f"recorded_meeting_{int(time.time())}.wav"
+            selected_lang_code = "auto"  # default for recorded audio
 
     if uploaded_file is not None:
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            if st.button("🚀 Analyze Meeting", use_container_width=True, type="primary"):
+            lang_display = selected_lang_label if 'selected_lang_label' in dir() else "Auto"
+            if st.button(f"🚀 Analyze Meeting ({lang_display})", use_container_width=True, type="primary"):
                 with st.spinner("Uploading and starting AI transcription..."):
-                    response = api_post_file("/meetings/upload", uploaded_file.getvalue(), uploaded_file.name)
+                    # Pass language code as query param
+                    lang_param = selected_lang_code if selected_lang_code != "auto" else None
+                    upload_url = f"/meetings/upload"
+                    if lang_param:
+                        upload_url += f"?language={lang_param}"
+
+                    try:
+                        r = requests.post(
+                            f"{API_URL}{upload_url}",
+                            files={"file": (uploaded_file.name, uploaded_file.getvalue())},
+                            headers=get_jwt_headers(),
+                            timeout=120,
+                        )
+                        r.raise_for_status()
+                        response = r.json()
+                    except Exception as e:
+                        st.error(f"Upload failed: {e}")
+                        response = None
 
                 if response and response.get("meeting_id"):
                     st.session_state.selected_meeting_id = response["meeting_id"]
@@ -2126,7 +2303,9 @@ def render_settings_page():
 
 page = st.session_state.current_page
 
-if page == "Dashboard":
+if page == "Login":
+    render_login_page()
+elif page == "Dashboard":
     render_dashboard_page()
 elif page == "Upload":
     render_upload_page()
