@@ -40,6 +40,9 @@ from .auth import (
     UserRegisterRequest, UserLoginRequest, UserResponse, TokenResponse,
     register_user, login_user, get_current_user, require_admin, UserDB
 )
+from .integrations.zoom import list_zoom_recordings, download_zoom_recording
+from .integrations.google_meet import list_google_meet_recordings, download_google_meet_recording
+from .integrations.teams import list_teams_recordings, download_teams_recording
 
 # ─────────────────────────────────────────────
 # App Setup
@@ -110,6 +113,198 @@ def login(
 def get_me(current_user: UserDB = Depends(get_current_user)):
     """Get the currently authenticated user's profile."""
     return current_user
+
+
+# ─────────────────────────────────────────────
+# Platform Integrations (Zoom / Google Meet / Teams)
+# ─────────────────────────────────────────────
+
+@app.get("/integrations/status")
+def integrations_status(_: str = Depends(verify_api_key)):
+    """
+    Check which platform integrations are configured.
+    Returns enabled/disabled status for Zoom, Google Meet, and Teams.
+    This endpoint is used by the dashboard to show the Integrations page.
+    """
+    return {
+        "zoom": {
+            "enabled": bool(settings.ZOOM_ACCOUNT_ID and settings.ZOOM_CLIENT_ID),
+            "label": "Zoom",
+            "description": "Fetch cloud recordings from Zoom meetings",
+            "setup_url": "https://marketplace.zoom.us/develop/create",
+            "required_env": ["ZOOM_ACCOUNT_ID", "ZOOM_CLIENT_ID", "ZOOM_CLIENT_SECRET"],
+        },
+        "google_meet": {
+            "enabled": bool(settings.GOOGLE_SERVICE_ACCOUNT_INFO),
+            "label": "Google Meet",
+            "description": "Fetch Meet recordings saved to Google Drive",
+            "setup_url": "https://console.cloud.google.com",
+            "required_env": ["GOOGLE_SERVICE_ACCOUNT_INFO"],
+        },
+        "teams": {
+            "enabled": bool(settings.TEAMS_TENANT_ID and settings.TEAMS_CLIENT_ID),
+            "label": "Microsoft Teams",
+            "description": "Fetch Teams meeting recordings from OneDrive",
+            "setup_url": "https://portal.azure.com",
+            "required_env": ["TEAMS_TENANT_ID", "TEAMS_CLIENT_ID", "TEAMS_CLIENT_SECRET"],
+        },
+    }
+
+
+@app.get("/integrations/zoom/recordings")
+def get_zoom_recordings(
+    days_back: int = 30,
+    _: str = Depends(verify_api_key),
+):
+    """
+    List Zoom cloud recordings from the last N days.
+    Requires ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET in .env.
+    """
+    try:
+        return list_zoom_recordings(days_back=days_back)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/integrations/zoom/process/{recording_id}", response_model=MeetingUploadResponse, status_code=202)
+def process_zoom_recording(
+    recording_id: str,
+    download_url: str,
+    topic: str = "Zoom Meeting",
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Download a Zoom recording and push it through the SMI intelligence pipeline.
+    Returns a meeting_id immediately. Poll GET /meetings/{meeting_id} for results.
+    """
+    import uuid
+    meeting_id = str(uuid.uuid4())
+    filename = f"{meeting_id}_zoom.mp4"
+    saved_path = str(settings.UPLOAD_DIR / filename)
+
+    # Create DB record immediately
+    meeting = MeetingDB(id=meeting_id, filename=f"[Zoom] {topic}")
+    db.add(meeting)
+    db.commit()
+
+    # Download + process in background
+    def _download_and_process():
+        try:
+            file_path = download_zoom_recording(download_url, filename, str(settings.UPLOAD_DIR))
+            _process_meeting_background(meeting_id, file_path)
+        except Exception as e:
+            logger.error(f"Zoom recording processing failed: {e}")
+
+    background_tasks.add_task(_download_and_process)
+
+    return MeetingUploadResponse(
+        meeting_id=meeting_id,
+        status="processing",
+        message=f"Zoom recording '{topic}' queued. Poll /meetings/{meeting_id} for results.",
+    )
+
+
+@app.get("/integrations/google-meet/recordings")
+def get_google_meet_recordings(
+    days_back: int = 30,
+    _: str = Depends(verify_api_key),
+):
+    """
+    List Google Meet recordings from Google Drive (last N days).
+    Requires GOOGLE_SERVICE_ACCOUNT_INFO in .env.
+    """
+    try:
+        return list_google_meet_recordings(days_back=days_back)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/integrations/google-meet/process/{file_id}", response_model=MeetingUploadResponse, status_code=202)
+def process_google_meet_recording(
+    file_id: str,
+    topic: str = "Google Meet",
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Download a Google Meet recording from Drive and process it through SMI.
+    """
+    import uuid
+    meeting_id = str(uuid.uuid4())
+    filename = f"{meeting_id}_gmeet.mp4"
+
+    meeting = MeetingDB(id=meeting_id, filename=f"[Google Meet] {topic}")
+    db.add(meeting)
+    db.commit()
+
+    def _download_and_process():
+        try:
+            file_path = download_google_meet_recording(file_id, filename, str(settings.UPLOAD_DIR))
+            _process_meeting_background(meeting_id, file_path)
+        except Exception as e:
+            logger.error(f"Google Meet recording processing failed: {e}")
+
+    background_tasks.add_task(_download_and_process)
+
+    return MeetingUploadResponse(
+        meeting_id=meeting_id,
+        status="processing",
+        message=f"Google Meet recording '{topic}' queued. Poll /meetings/{meeting_id} for results.",
+    )
+
+
+@app.get("/integrations/teams/recordings")
+def get_teams_recordings(
+    days_back: int = 30,
+    _: str = Depends(verify_api_key),
+):
+    """
+    List Microsoft Teams meeting recordings (last N days).
+    Requires TEAMS_TENANT_ID, TEAMS_CLIENT_ID, TEAMS_CLIENT_SECRET in .env.
+    """
+    try:
+        return list_teams_recordings(days_back=days_back)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/integrations/teams/process/{recording_id}", response_model=MeetingUploadResponse, status_code=202)
+def process_teams_recording(
+    recording_id: str,
+    download_url: str,
+    topic: str = "Teams Meeting",
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_api_key),
+):
+    """
+    Download a Teams recording from OneDrive and process it through SMI.
+    """
+    import uuid
+    meeting_id = str(uuid.uuid4())
+    filename = f"{meeting_id}_teams.mp4"
+
+    meeting = MeetingDB(id=meeting_id, filename=f"[Teams] {topic}")
+    db.add(meeting)
+    db.commit()
+
+    def _download_and_process():
+        try:
+            file_path = download_teams_recording(download_url, filename, str(settings.UPLOAD_DIR))
+            _process_meeting_background(meeting_id, file_path)
+        except Exception as e:
+            logger.error(f"Teams recording processing failed: {e}")
+
+    background_tasks.add_task(_download_and_process)
+
+    return MeetingUploadResponse(
+        meeting_id=meeting_id,
+        status="processing",
+        message=f"Teams recording '{topic}' queued. Poll /meetings/{meeting_id} for results.",
+    )
 
 
 # ─────────────────────────────────────────────

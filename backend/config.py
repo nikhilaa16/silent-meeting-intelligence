@@ -46,6 +46,26 @@ class Settings(BaseSettings):
     # Legacy API Key (kept for backward compat with Streamlit dashboard)
     API_KEY: str = "silent-meeting-super-secret-2025"
 
+    # ── Zoom Integration ──────────────────────────────────────────────────
+    # Server-to-Server OAuth. Create app at: https://marketplace.zoom.us/develop/create
+    # Required scope: cloud_recording:read:list_account_recordings
+    ZOOM_ACCOUNT_ID: str = ""
+    ZOOM_CLIENT_ID: str = ""
+    ZOOM_CLIENT_SECRET: str = ""
+
+    # ── Google Meet Integration ───────────────────────────────────────────
+    # Meet recordings are saved to Google Drive. Uses Service Account credentials.
+    # Create at: https://console.cloud.google.com → APIs → Drive API → Service Account
+    # Set to JSON file path OR raw JSON string of service account key.
+    GOOGLE_SERVICE_ACCOUNT_INFO: str = ""
+
+    # ── Microsoft Teams Integration ───────────────────────────────────────
+    # Create app at: https://portal.azure.com → App Registrations
+    # Required permissions: CallRecords.Read.All, Files.Read.All, OnlineMeetings.Read.All
+    TEAMS_TENANT_ID: str = ""
+    TEAMS_CLIENT_ID: str = ""
+    TEAMS_CLIENT_SECRET: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

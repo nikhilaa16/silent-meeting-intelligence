@@ -1228,6 +1228,7 @@ with st.sidebar:
         ("📋 Task Board", "Tasks"),
         ("📊 Analytics", "Analytics"),
         ("⚠ Conflict Center", "Conflicts"),
+        ("🔗 Integrations", "Integrations"),
         ("💬 AI Assistant", "Assistant"),
         ("⚙ Settings", "Settings"),
     ]
@@ -2297,6 +2298,176 @@ def render_settings_page():
             st.toast("Settings configuration updated locally.")
 
 
+def render_integrations_page():
+    """Platform Integrations page — Zoom, Google Meet, Microsoft Teams."""
+    st.markdown('<h1 class="main-title">🔗 Platform Integrations</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="subtitle">Connect Zoom, Google Meet, and Microsoft Teams to automatically pull meeting recordings.</p>', unsafe_allow_html=True)
+
+    # Fetch integration status from backend
+    try:
+        status_resp = requests.get(f"{API_URL}/integrations/status", headers=AUTH_HEADERS, timeout=5)
+        integrations = status_resp.json() if status_resp.status_code == 200 else {}
+    except Exception:
+        integrations = {}
+        st.warning("⚠️ Could not reach backend. Make sure the FastAPI server is running.")
+
+    # Platform cards config
+    platforms = [
+        {
+            "key": "zoom",
+            "icon": "🟦",
+            "name": "Zoom",
+            "color": "#2D8CFF",
+            "recordings_endpoint": "/integrations/zoom/recordings",
+            "process_endpoint": "/integrations/zoom/process",
+            "id_field": "id",
+            "url_field": "download_url",
+        },
+        {
+            "key": "google_meet",
+            "icon": "🟢",
+            "name": "Google Meet",
+            "color": "#00AC47",
+            "recordings_endpoint": "/integrations/google-meet/recordings",
+            "process_endpoint": "/integrations/google-meet/process",
+            "id_field": "id",
+            "url_field": None,
+        },
+        {
+            "key": "teams",
+            "icon": "🟣",
+            "name": "Microsoft Teams",
+            "color": "#6264A7",
+            "recordings_endpoint": "/integrations/teams/recordings",
+            "process_endpoint": "/integrations/teams/process",
+            "id_field": "id",
+            "url_field": "download_url",
+        },
+    ]
+
+    for platform in platforms:
+        key = platform["key"]
+        info = integrations.get(key, {})
+        is_enabled = info.get("enabled", False)
+        color = platform["color"]
+        icon = platform["icon"]
+        name = platform["name"]
+
+        status_html = (
+            f'<span style="color:#22C55E; font-weight:600; font-size:0.82rem;">✅ Connected</span>'
+            if is_enabled else
+            f'<span style="color:#94A3B8; font-weight:600; font-size:0.82rem;">⚪ Not Configured</span>'
+        )
+
+        st.markdown(f"""
+        <div style="background:rgba(22,22,36,0.6); border:1px solid rgba(255,255,255,0.06);
+                    border-left:4px solid {color}; border-radius:12px;
+                    padding:1.2rem 1.5rem; margin-bottom:1.2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span style="font-size:1.5rem;">{icon}</span>
+                    <span style="color:#FFFFFF; font-weight:700; font-size:1.05rem;">{name}</span>
+                </div>
+                {status_html}
+            </div>
+            <div style="color:#94A3B8; font-size:0.85rem;">{info.get('description', '')}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if is_enabled:
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                days = st.selectbox("Last (days)", [7, 14, 30, 60], index=2, key=f"{key}_days")
+            with col2:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                fetch_btn = st.button(f"🔄 Fetch {name} Recordings", key=f"{key}_fetch", type="primary")
+
+            if fetch_btn or st.session_state.get(f"{key}_recordings"):
+                with st.spinner(f"Fetching {name} recordings..."):
+                    try:
+                        r = requests.get(
+                            f"{API_URL}{platform['recordings_endpoint']}",
+                            params={"days_back": days},
+                            headers=AUTH_HEADERS,
+                            timeout=20,
+                        )
+                        recordings = r.json() if r.status_code == 200 else []
+                        st.session_state[f"{key}_recordings"] = recordings
+                    except Exception as e:
+                        st.error(f"Failed to fetch recordings: {e}")
+                        recordings = []
+
+                recordings = st.session_state.get(f"{key}_recordings", [])
+                if not recordings:
+                    st.info(f"No {name} recordings found in the last {days} days.")
+                else:
+                    st.markdown(f"**{len(recordings)} recording(s) found:**")
+                    for rec in recordings:
+                        topic = rec.get("topic", "Untitled")
+                        size_mb = rec.get("file_size_mb", 0)
+                        start = rec.get("start_time", "")[:10] if rec.get("start_time") else "Unknown"
+                        duration = rec.get("duration_minutes", 0)
+
+                        r_col1, r_col2 = st.columns([3, 1])
+                        with r_col1:
+                            st.markdown(f"""
+                            <div style="background:rgba(22,22,36,0.4); border-radius:8px;
+                                        padding:0.7rem 1rem; margin-bottom:0.5rem;
+                                        border:1px solid rgba(255,255,255,0.05);">
+                                <div style="color:#FFFFFF; font-weight:600; font-size:0.9rem;">{topic}</div>
+                                <div style="color:#94A3B8; font-size:0.78rem; margin-top:0.2rem;">
+                                    📅 {start} &nbsp;•&nbsp;
+                                    💾 {size_mb} MB &nbsp;•&nbsp;
+                                    ⏱ {duration} min
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with r_col2:
+                            if st.button("🚀 Process", key=f"{key}_proc_{rec.get('id')}"):
+                                with st.spinner("Queuing for processing..."):
+                                    rec_id = rec.get(platform["id_field"])
+                                    params = {"topic": topic}
+                                    if platform["url_field"] and rec.get(platform["url_field"]):
+                                        params["download_url"] = rec[platform["url_field"]]
+                                    try:
+                                        proc_r = requests.post(
+                                            f"{API_URL}{platform['process_endpoint']}/{rec_id}",
+                                            params=params,
+                                            headers=AUTH_HEADERS,
+                                            timeout=15,
+                                        )
+                                        if proc_r.status_code == 202:
+                                            data = proc_r.json()
+                                            st.session_state.selected_meeting_id = data["meeting_id"]
+                                            st.session_state.current_page = "History"
+                                            st.success(f"✅ Queued! Processing started.")
+                                            st.rerun()
+                                        else:
+                                            st.error(f"Failed: {proc_r.text[:200]}")
+                                    except Exception as e:
+                                        st.error(f"Error: {e}")
+        else:
+            required = info.get("required_env", [])
+            setup_url = info.get("setup_url", "#")
+            if required:
+                st.markdown(
+                    f"""
+                    <div style="background:rgba(255,165,0,0.06); border:1px solid rgba(255,165,0,0.2);
+                                border-radius:8px; padding:0.8rem 1rem; margin-bottom:1rem;">
+                        <div style="color:#FFA500; font-size:0.82rem; font-weight:600; margin-bottom:0.3rem;">
+                            🔧 Setup Required
+                        </div>
+                        <div style="color:#94A3B8; font-size:0.82rem;">
+                            Add these to your <code>.env</code> file:
+                            <br><code style="color:#FF8FAB;">{" | ".join(required)}</code>
+                            <br><a href="{setup_url}" target="_blank" style="color:#FF8FAB;">View Setup Guide →</a>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+
 # ─────────────────────────────────────────────
 # Router Switch
 # ─────────────────────────────────────────────
@@ -2319,6 +2490,8 @@ elif page == "Analytics":
     render_analytics_page()
 elif page == "Conflicts":
     render_conflicts_page()
+elif page == "Integrations":
+    render_integrations_page()
 elif page == "Assistant":
     render_assistant_page()
 elif page == "Settings":
