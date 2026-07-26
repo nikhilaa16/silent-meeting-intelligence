@@ -116,6 +116,23 @@ def get_me(current_user: UserDB = Depends(get_current_user)):
 
 
 # ─────────────────────────────────────────────
+# Authentication Dependency
+# ─────────────────────────────────────────────
+
+def verify_api_key(x_api_key: str = Header(..., description="API key for authentication")) -> str:
+    """
+    FastAPI dependency — validates the X-API-Key header on every protected request.
+    Usage: Set X-API-Key: your-key in every request header.
+    """
+    if x_api_key != settings.API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key. Set X-API-Key header with your API_KEY from .env",
+        )
+    return x_api_key
+
+
+# ─────────────────────────────────────────────
 # Platform Integrations (Zoom / Google Meet / Teams)
 # ─────────────────────────────────────────────
 
@@ -307,30 +324,6 @@ def process_teams_recording(
     )
 
 
-# ─────────────────────────────────────────────
-# Authentication Dependency
-# ─────────────────────────────────────────────
-
-def verify_api_key(x_api_key: str = Header(..., description="API key for authentication")) -> str:
-    """
-    FastAPI dependency — validates the X-API-Key header on every protected request.
-
-    Why header-based API key over JWT?
-    - JWT is stateful and requires a token store or short expiry — complex for
-      a single-tenant tool where one user controls everything.
-    - A shared API key is simpler, equally secure, and trivially rotatable
-      (just change API_KEY in .env and restart).
-
-    Usage:
-        Set X-API-Key: your-key in every request header.
-        The Streamlit dashboard reads the key from .env and sends it automatically.
-    """
-    if x_api_key != settings.API_KEY:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key. Set X-API-Key header with your API_KEY from .env",
-        )
-    return x_api_key
 
 
 # ─────────────────────────────────────────────
